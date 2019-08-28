@@ -28,7 +28,7 @@
 #include "random.h"
 #include "Utils.h"
 #include "hps_0.h"
-#include <time.h>
+#include <chrono>
 
 // sopc-create-header-files "./testeio.sopcinfo" --single hps_0.h --module hps_0
 
@@ -49,6 +49,8 @@
 #define CIRCUIT_COLUMN_COUNT 5
 #define CIRCUIT_NUM_IN 8
 #define CIRCUIT_NUM_OUT 8
+
+using namespace std::chrono; // PARA VERIFICAR TEMPO DE PROCESSAMENTO
 
 std::vector<std::tuple<std::bitset<8>, std::bitset<8>, std::bitset<8>>>
     inputOutputValidSequences() {
@@ -883,10 +885,7 @@ int main() {
 	*(uint32_t*) sampleIndexAddress = 0;		//entrada na maquina de estados
 	*(uint32_t*) writeSampleAddress = 0;	
 
-	clock_t intervalo[2]; //MARCAR TEMPO DE EXECUCAO
-	double Tempo;
-
-	intervalo[0] = clock();	//INICIO DE VERIFICACAO
+	high_resolution_clock::time_point t1 = high_resolution_clock::now(); //INICIO DO MARCADOR DE TEMPO PARA ENVIO DOS INDIVIDUOS A FPGA
 
 	for (unsigned int i = 0; i < io.size(); i += 4) {
 	    for(unsigned int j = 0; j < 4; j++){
@@ -937,11 +936,12 @@ int main() {
 		*(uint32_t*) writeSampleAddress = 0;
 
 	}
-	intervalo[1] = clock(); //FIM DA VERIFICACAO
 
-	Tempo = (intervalo[1] - intervalo[0]) * (1000 / CLOCKS_PER_SEC);
+	high_resolution_clock::time_point t2 = high_resolution_clock::now(); //FINAL DO MARCADOR DE TEMPO DO ENVIO DE INDIVIDUOS A FPGA
 
-	printf("\nTempo de envio: %f ms.\n", Tempo);
+	auto tempGasto = duration_cast<microseconds>( t2 - t1 ).count();
+
+	std::cout << " Tempo:" << tempGasto << "microssegundos" << std::endl;
 		printf("Inicio da evolucao!!!\n\n\n");
 
 	/* Send a raw chromosome and evaluate once

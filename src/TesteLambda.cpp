@@ -463,7 +463,9 @@ void sendChromosomeToFPGA(Chromosome chromosome, GeneticParams params, void* fpg
 uint32_t sendVectorAndGetErrorSum
     ( std::vector<uint32_t> vec
     , void* fpgaMemory
-    ) {
+    ) { //COLOCAR PARA MEDIR TEMPO AQUI???
+
+	high_resolution_clock::time_point t5 = high_resolution_clock::now(); //MARCADOR INICIAL DE TEMPO
 
     std::vector<int> errorSumAddrs = {
         ERROR_SUM_0_BASE, ERROR_SUM_1_BASE, ERROR_SUM_2_BASE, ERROR_SUM_3_BASE,
@@ -506,6 +508,12 @@ uint32_t sendVectorAndGetErrorSum
     *(uint32_t*) doneProcessingFeedbackAddr = 1;
 
     return chromErrorSum;
+
+	high_resolution_clock::time_point t6 = high_resolution_clock::now(); //MARCADOR INICIAL DE TEMPO
+	auto tempCrome = duration_cast<microseconds>( t6 - t5 ).count();
+
+	std::cout << " Tempo:" << tempCrome << "microssegundos" << std::endl;
+
 }
 
 uint32_t sendChromosomeAndGetErrorSum
@@ -617,7 +625,10 @@ RNGFUNC(std::vector<std::vector<Cell>>)  mutateGrid
 }
 
 std::function<RNGFUNC(Chromosome)(Chromosome)>
-	makeMutation(GeneticParams params, float mutationPercent) {
+	makeMutation(GeneticParams params, float mutationPercent) { //MEDIR 1+LAMBDA AQUI???
+
+	high_resolution_clock::time_point t3 = high_resolution_clock::now(); //MARCADOR INICIAL DE TEMPO
+
     auto totalElements = params.r * params.c * (params.leNumIn + 1) + params.numOut;
     auto elementsToMutate = std::ceil(totalElements * mutationPercent);
 
@@ -644,6 +655,9 @@ std::function<RNGFUNC(Chromosome)(Chromosome)>
 			}, chrom, rands);
 		});
 	};
+	high_resolution_clock::time_point t4 = high_resolution_clock::now(); //MARCADOR FINAL DE TEMPO
+	auto tempLambda = duration_cast<microseconds>( t4 - t3 ).count();
+	std::cout << " Tempo de Lambda:" << tempLambda << "microssegundos" << std::endl;
 }
 
 RNGFUNC(std::vector<Cell>)  randomColumn(GeneticParams params, unsigned int c) {
@@ -754,7 +768,7 @@ RNGFUNC(GAState<Evaluated<Chromosome>>)
                 "fpgaGARoutine's fitness function must be of type T -> bool");
 
     auto mutationFunc = makeMutation(params, MUTATION_RATE);
-    auto strategy = lambdaPlusN<Chromosome>(fitnessFunc, mutationFunc, LAMBDA);
+    auto strategy = lambdaPlusN<Chromosome>(fitnessFunc, mutationFunc, LAMBDA); //MEDIA 1+LAMBDA AQUI??
     auto gaFunc = makeGAFunction<Evaluated<Chromosome>>(strategy);
     auto termination = makeCorrectTermination(params, finalParams, fitnessFunc, fpgaMem);
 

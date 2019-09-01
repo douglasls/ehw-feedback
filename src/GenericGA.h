@@ -6,6 +6,10 @@
 #include <math.h>
 #include "random.h"
 #include "Utils.h"
+#include <chrono>
+
+using namespace std;
+using namespace std::chrono;
 
 template <typename T>
 struct Evaluated {
@@ -51,10 +55,23 @@ std::function<RNGFUNC(std::vector<Evaluated<T>>)(std::vector<Evaluated<T>>)>
 			"lambdaPlusN's mutation function must be of type T -> RNGFUNC(T)");
 
 	return [=](std::vector<Evaluated<T>> population) {
-		return bind(mapM(mutation, replicate(n, population[0].value)),
+		
+		high_resolution_clock::time_point t1 = high_resolution_clock::now(); // INICIO TEMPO DE GERAR INDIVIDUOS
+		auto result = mapM(mutation, replicate(n, population[0].value));
+		high_resolution_clock::time_point t2 = high_resolution_clock::now(); //FIM
+		auto TempIndiv = duration_cast<microseconds>( t2 - t1 ).count();
+		std::cout << "Tempo para gerar individuo: " << TempIndiv << std::endl;
+		
+		return bind(result,
 				[=](std::vector<T> newIndividuals) {
 		    newIndividuals.insert(newIndividuals.begin(), population[0].value);
+			
+			high_resolution_clock::time_point t3 = high_resolution_clock::now(); // INICIO TEMPO DE AVALIAR OS INDIVIDUOS
 			auto fitnesses = map(fitness, newIndividuals);
+			high_resolution_clock::time_point t4 = high_resolution_clock::now(); // FIM
+			auto TempAvalia = duration_cast<microseconds>( t4 - t3 ).count();
+			std::cout << "Tempo para avaliar individuo: " << TempAvalia << std::endl;
+
 			auto evaluated = zipWith(makeEvaluated<T>, newIndividuals, fitnesses);
             return pure(std::vector<Evaluated<T>>{ minimumEvaluated(evaluated) });
 		});

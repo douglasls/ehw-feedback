@@ -28,7 +28,7 @@
 #include "random.h"
 #include "Utils.h"
 #include "hps_0.h"
-#include <chrono>
+#include <time.h>
 
 // sopc-create-header-files "./testeio.sopcinfo" --single hps_0.h --module hps_0
 
@@ -493,6 +493,10 @@ uint32_t sendVectorAndGetErrorSum
         // ficar preso num loop infinito se isso nao estiver aqui.
         std::cout << "";
     }
+		// FIM
+		high_resolution_clock::time_point t6 = high_resolution_clock::now(); //MARCADOR FINAL DE TEMPO
+		auto tempCrome = duration_cast<microseconds>( t6 - t5 ).count();
+		std::cout << " TempoCromossomo:" << tempCrome << "microssegundos" << std::endl;
 
     uint32_t chromErrorSum = 0;
     for (auto addr : errorSumAddrs) {
@@ -508,11 +512,6 @@ uint32_t sendVectorAndGetErrorSum
     *(uint32_t*) doneProcessingFeedbackAddr = 1;
 
     return chromErrorSum;
-
-	high_resolution_clock::time_point t6 = high_resolution_clock::now(); //MARCADOR INICIAL DE TEMPO
-	auto tempCrome = duration_cast<microseconds>( t6 - t5 ).count();
-
-	std::cout << " Tempo:" << tempCrome << "microssegundos" << std::endl;
 
 }
 
@@ -625,9 +624,8 @@ RNGFUNC(std::vector<std::vector<Cell>>)  mutateGrid
 }
 
 std::function<RNGFUNC(Chromosome)(Chromosome)>
-	makeMutation(GeneticParams params, float mutationPercent) { //MEDIR 1+LAMBDA AQUI???
+	makeMutation(GeneticParams params, float mutationPercent) {
 
-	high_resolution_clock::time_point t3 = high_resolution_clock::now(); //MARCADOR INICIAL DE TEMPO
 
     auto totalElements = params.r * params.c * (params.leNumIn + 1) + params.numOut;
     auto elementsToMutate = std::ceil(totalElements * mutationPercent);
@@ -655,9 +653,7 @@ std::function<RNGFUNC(Chromosome)(Chromosome)>
 			}, chrom, rands);
 		});
 	};
-	high_resolution_clock::time_point t4 = high_resolution_clock::now(); //MARCADOR FINAL DE TEMPO
-	auto tempLambda = duration_cast<microseconds>( t4 - t3 ).count();
-	std::cout << " Tempo de Lambda:" << tempLambda << "microssegundos" << std::endl;
+
 }
 
 RNGFUNC(std::vector<Cell>)  randomColumn(GeneticParams params, unsigned int c) {
@@ -735,7 +731,7 @@ std::function<bool(GAState<Evaluated<Chromosome>>)>
 
             return true;
         }
-        if (state.generation % 100 == 0) {
+        if (state.generation % 1 == 0) {	//MOSTRAR O NUMERO DE CADA GERACAO
             printf("%d %g\n", state.generation, state.population[0].score);
         }
         return state.generation < MAX_GENERATIONS;
@@ -951,11 +947,11 @@ int main() {
 
 	}
 
-	high_resolution_clock::time_point t2 = high_resolution_clock::now(); //FINAL DO MARCADOR DE TEMPO DO ENVIO DE INDIVIDUOS A FPGA
-
+	 //FINAL DO MARCADOR DE TEMPO DO ENVIO DE INDIVIDUOS A FPGA
+	high_resolution_clock::time_point t2 = high_resolution_clock::now();
 	auto tempGasto = duration_cast<microseconds>( t2 - t1 ).count();
 
-	std::cout << " Tempo:" << tempGasto << "microssegundos" << std::endl;
+	std::cout << " Tempo de envio para FPGA:" << tempGasto << "microssegundos" << std::endl;
 		printf("Inicio da evolucao!!!\n\n\n");
 
 	/* Send a raw chromosome and evaluate once

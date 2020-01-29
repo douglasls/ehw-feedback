@@ -35,6 +35,9 @@
 #define REG_BASE 0xFF200000
 #define REG_SPAN 0x00200000
 
+typedef std::array<bool, 16> Func;
+
+//TODO: redefinir os parâmetros da estrutura
 #define NUM_IN 2
 #define NUM_OUT 1
 #define INITIAL_ROW_COUNT 1
@@ -66,19 +69,9 @@ std::vector<std::tuple<std::bitset<8>, std::bitset<8>, std::bitset<8>>>
             });
 }
 
-enum Function {
-	AND,
-	OR,
-	NOT,
-	XOR,
-	XNOR,
-	NAND,
-	NOR
-};
-
+//TODO: checar todas as referências do tipo cell.inputs ou cell.function
 struct Cell {
-	Function func;
-	std::vector<unsigned int> inputs;
+	std::array<bool,16> function;
 };
 
 struct GeneticParams {
@@ -127,23 +120,13 @@ std::vector<uint32_t> convertToPacked(std::vector<bool> v) {
     return map(convertUnit, chunksOf(v, 32));
 }
 
-std::vector<bool> serializeCell(GeneticParams params, Cell cell) {
+//TODO: adequar essa funcao de serializacao
+std::vector<bool> serializeCell(Cell cell) {
 	std::vector<bool> result;
 
-	auto numPinos = params.numIn + params.c * params.r;
-	auto bitsPinos = (uint32_t) ceil(log2(numPinos));
-	auto bitsFunc = 3;
-
-	auto inputs = map([=](unsigned int in) {
-		return convertToBits(in, bitsPinos);
-	}, cell.inputs);
-
-	auto func = convertToBits(cell.func, bitsFunc);
-
-	for (auto in : inputs) {
-		result.insert(result.end(), in.begin(), in.end());
+	for(auto i = cell.function.begin(); i != cell.function.end(); ++i){
+		result.push_back(cell.function[*i]);
 	}
-	result.insert(result.end(), func.begin(), func.end());
 
 	return result;
 }
@@ -151,14 +134,14 @@ std::vector<bool> serializeCell(GeneticParams params, Cell cell) {
 std::vector<bool> rawSerialize(GeneticParams params, Chromosome chrom) {
  	std::vector<uint32_t> result;
 
-	auto numPinos = params.numIn + params.c * params.r;
+	auto numPinos = params.c * params.r;
 	auto bitsPinos = (uint32_t) ceil(log2(numPinos));
 
 	std::vector<bool> totalBits;
 
 	for (unsigned int j = 0; j < params.c; j++) {
 		for (unsigned int i = 0; i < params.r; i++) {
-			auto cellBits = serializeCell(params, chrom.cells[i][j]);
+			auto cellBits = serializeCell(chrom.cells[i][j]);
 			totalBits.insert(totalBits.end(), cellBits.begin(), cellBits.end());
 		}
 	}
@@ -178,10 +161,10 @@ std::vector<uint32_t> serialize(GeneticParams params, Chromosome chrom) {
 	return convertToPacked(rawSerialize(params, chrom));
 }
 
-Cell makeCell(Function func, std::vector<unsigned int> inputs) {
+//TODO: Mudar os parametros de toda makeCell pelo codigo
+Cell makeCell(std::array<bool,16> func) {
 	Cell res;
-	res.func = func;
-	res.inputs = inputs;
+	res.function = func;
 	return res;
 }
 
@@ -226,48 +209,18 @@ unsigned int fitInLargerIndex
 	return index;
 }
 
-Cell fitInLargerCell(Cell cell, unsigned int oldR, unsigned int newR, unsigned int oldNumIn, unsigned int numIn) {
-	return makeCell(cell.func, map([=](unsigned int input) {
-		return fitInLargerIndex(input, oldR, newR, oldNumIn, numIn, 0);
-	}, cell.inputs));
-}
 
-// ALL parameters in largerParams are assumed to be greater or equal to params.
-Chromosome fitInLargerChrom(Chromosome chrom, unsigned int outputNum, GeneticParams params, GeneticParams largerParams) {
-	Chromosome result;
+//=====================================================================
+//TODO: modificar as funcoes que mostram o cromossomo, abaixo
+std::string showCell(Cell cell) {
 
-	result.cells = replicate(largerParams.r, replicate(largerParams.c, makeCell(AND, replicate(params.leNumIn, (unsigned int) 0))));
-	for (unsigned int i = 0; i < params.r; i++) {
-		for (unsigned int j = 0; j < params.c; j++) {
-			result.cells[i][j] = fitInLargerCell(chrom.cells[i][j], params.r, largerParams.r, params.numIn, largerParams.numIn);
-		}
-	}
+	std::string s = "";
 
-	for (unsigned int i = 0; i < outputNum; i++) {
-		result.outputs.push_back(0);
+	for(bool f : cell.function){
+		f ? s += '1' : s += '0'; 
 	}
-	result.outputs.insert(result.outputs.end(), chrom.outputs.begin(), chrom.outputs.end());
-	for (unsigned int i = outputNum; i < params.numOut + outputNum; i++) {
-		result.outputs[i] = fitInLargerIndex(result.outputs[i], params.r, largerParams.r, params.numIn, largerParams.numIn, 0);
-	}
-	for (unsigned int i = 0; i < largerParams.numOut - (params.numOut + outputNum); i++) {
-		result.outputs.push_back(0);
-	}
-
-	return result;
-}
-
-std::string showFunction(Function f) {
-	switch(f) {
-	case AND: return "AND";
-	case OR: return "OR";
-	case NOT: return "NOT";
-	case XOR: return "XOR";
-	case XNOR: return "XNOR";
-	case NAND: return "NAND";
-	case NOR: return "NOR";
-	}
-	return "What";
+	
+    return s;
 }
 
 std::string showInt(unsigned int i) {
@@ -294,19 +247,6 @@ std::string showInput(GeneticParams params, unsigned int i) {
 	return s;
 }
 
-std::string showCell(GeneticParams params, Cell c) {
-	auto s = showFunction(c.func);
-	s += "[";
-	for (unsigned int i = 0; i < c.inputs.size(); i++) {
-		s += showInput(params, c.inputs[i]);
-		if (i < c.inputs.size() - 1) {
-			s += ", ";
-		}
-	}
-	s += "]";
-	return s;
-}
-
 std::vector<std::string> format(std::vector<std::string> vs) {
 	auto sizes = map([=](std::string s) { return s.size(); }, vs);
 	auto max = std::max_element(sizes.begin(), sizes.end());
@@ -324,7 +264,7 @@ std::string showChromosome(GeneticParams params, Chromosome chrom) {
 	s += "Cells:\n";
 	auto cellsS =
 			map([=](std::vector<Cell> row) {
-		return map([=](Cell c) { return showCell(params, c); }, row);
+		return map([=](Cell c) { return showCell(c); }, row);
 	}, chrom.cells);
 
 	auto tCellsS = transpose(cellsS);
@@ -353,89 +293,7 @@ std::string showChromosome(GeneticParams params, Chromosome chrom) {
 	return s;
 }
 
-// This function takes the original GeneticParams
-// used to reach each individual solution.
-// The new one should be calculated after this function
-// is called.
-Chromosome  mergeChromosomes(GeneticParams params, std::vector<Chromosome> chroms) {
-	auto zipped = zip(vectorFromTo(0, chroms.size()), chroms);
-	auto newR = chroms.size() * params.r;
-
-	auto transformed = map([=](std::tuple<unsigned int, Chromosome> tup) {
-		auto transform = [=](unsigned int input) -> unsigned int {
-			return fitInLargerIndex(input, params.r, newR, params.numIn, params.numIn, std::get<0>(tup) * params.r);
-		};
-
-		auto newCells = map([=](std::vector<Cell> cells) {
-			return map([=](Cell cell) {
-				return makeCell(cell.func, map(transform, cell.inputs));
-			}, cells);
-		}, std::get<1>(tup).cells);
-
-		auto newOuts = map(transform, std::get<1>(tup).outputs);
-
-		return std::make_tuple(std::get<0>(tup), makeChromosome(newCells, newOuts));
-	}, zipped);
-
-	std::vector<std::vector<Cell>> initCells(newR, std::vector<Cell>(params.c));
-	std::vector<unsigned int> initOuts(params.numOut * chroms.size());
-
-	return fold([=](Chromosome result, std::tuple<unsigned int, Chromosome> tup) {
-		for (unsigned int i = 0; i < params.r; i++) {
-			for (unsigned int j = 0; j < params.c; j++) {
-				result.cells[i + std::get<0>(tup) * params.r][j] = std::get<1>(tup).cells[i][j];
-			}
-		}
-		for (unsigned int i = 0; i < params.numOut; i++) {
-            result.outputs[i + std::get<0>(tup) * params.numOut] = std::get<1>(tup).outputs[i];
-		}
-		return result;
-	}, makeChromosome(initCells, initOuts), transformed);
-}
-
-
-Function functionFromInt(unsigned int n) {
-	switch (n) {
-	case 0:
-		return AND;
-	case 1:
-		return OR;
-	case 2:
-		return NOT;
-	case 3:
-		return XOR;
-	case 4:
-		return XNOR;
-	case 5:
-		return NAND;
-	case 6:
-		return NOR;
-	default:
-		return AND;
-	}
-}
-
-std::function<bool(std::vector<bool>)>
-		cellFunction(Function func) {
-	switch (func) {
-	case AND:
-		return [](std::vector<bool> in) { return fold1(std::logical_and<bool>(), in); };
-	case OR:
-		return [](std::vector<bool> in) { return fold1(std::logical_or<bool>(), in); };
-	case NOT:
-		return [](std::vector<bool> in) { return !in[0]; };
-	case XOR:
-		return [](std::vector<bool> in) { return fold1(std::not_equal_to<bool>(), in); };
-	case XNOR:
-		return [](std::vector<bool> in) { return !fold1(std::not_equal_to<bool>(), in); };
-	case NAND:
-		return [](std::vector<bool> in) { return !fold1(std::logical_and<bool>(), in); };
-	case NOR:
-		return [](std::vector<bool> in) { return !fold1(std::logical_or<bool>(), in); };
-	}
-	// This is here to shut the compiler up. It should never actually be reached.
-    return [](std::vector<bool> in) { return fold1(std::logical_and<bool>(), in); };
-}
+//===========================================================================
 
 // Side-effectful!! Writes to FPGA ports.
 void sendVectorToFPGA(std::vector<uint32_t> vec, void* fpgaMemory) {
@@ -541,7 +399,7 @@ std::function<double(Chromosome)>
 			, void* fpgaMemory
             ) {
 	return [=](Chromosome chrom) {
-	    auto largerChrom = fitInLargerChrom(chrom, 0, params, largerParams);
+	    auto largerChrom = chrom;
         return sendChromosomeAndGetErrorSum(largerChrom, largerParams, fpgaMemory);
 	};
 }
@@ -558,13 +416,36 @@ std::function<double(Chromosome)>
 		largerParams.r = params.r * numOutputs;
 		largerParams.numOut = numOutputs;
 
-		return sendChromosomeAndGetErrorSum(fitInLargerChrom(chrom, outputNum, params, largerParams), largerParams, fpgaMemory);
+		return sendChromosomeAndGetErrorSum(chrom, largerParams, fpgaMemory);
 	};
 }
 
-RNGFUNC(Function) randomFunc() {
-	return rmap<random_type, Function>([](random_type r) {
-		return functionFromInt(r % 7);
+std::array<bool,16> arrayFromInt(int r){
+	std::array<bool,16> a;
+
+	a[0] = r & 0x0001;
+	a[1] = (r & 0x0002) >> 1;
+	a[2] = (r & 0x0004) >> 2;
+	a[3] = (r & 0x0008) >> 3;
+	a[4] = (r & 0x0010) >> 4;
+	a[5] = (r & 0x0020) >> 5;
+	a[6] = (r & 0x0040) >> 6;
+	a[7] = (r & 0x0080) >> 7;
+	a[8] = (r & 0x0100) >> 8;
+	a[9] = (r & 0x0200) >> 9;
+	a[10] = (r & 0x0400) >> 10;
+	a[11] = (r & 0x0800) >> 11;
+	a[12] = (r & 0x1000) >> 12;
+	a[13] = (r & 0x2000) >> 13;
+	a[14] = (r & 0x4000) >> 14;
+	a[15] = (r & 0x8000) >> 15;
+
+	return a;
+}
+
+RNGFUNC(Func) randomFunc() {
+	return rmap<random_type, Func>([](random_type r) {
+		return arrayFromInt(r);
 	}, getRandom());
 }
 
@@ -588,15 +469,19 @@ RNGFUNC(std::vector<unsigned int>)  mutateOutput
 	});
 }
 
-RNGFUNC(Cell)  randomCell
-		( GeneticParams params
-		, unsigned int c
-		) {
-	return bind(randomFunc(), [=](Function randFunc) {
-		return bind(sequence(replicate(params.leNumIn, randomOutput(params, c)))
-				, [=](std::vector<unsigned int> randomInputs) {
-			return pure(makeCell(randFunc, randomInputs));
-		});
+//TODO: Gerar o novo cromossomo aleatorio e ajustar a mutacao
+RNGFUNC(Cell)  randomCell()
+{
+	return bind(randomFunc(), [=](Func randFunc) {
+		return pure(makeCell(randFunc));
+	});
+}
+
+RNGFUNC(Cell) mutateCell(Cell cell){
+	return bind(getRandom(), [=](random_type rand) {
+		Cell cellMut = cell;
+		cellMut.function[rand % 15] = !cellMut.function[rand % 15];
+		return pure(cellMut);
 	});
 }
 
@@ -605,22 +490,11 @@ RNGFUNC(std::vector<std::vector<Cell>>)  mutateGrid
         , random_type pointToMutate
 		, GeneticParams params
 		) {
-	return bind(getRandom(), [=](random_type rand) mutable {
-            auto attrToMutate = rand % (params.leNumIn + 1);
-            auto col = pointToMutate / params.r;
-            auto row = pointToMutate % params.r;
-            if (attrToMutate == 0) {
-            	return bind(randomFunc(), [=](Function rFunc) mutable {
-            		grid[row][col].func = rFunc;
-            		return pure(grid);
-            	});
-            } else {
-                return bind(randomOutput(params, col), [=](unsigned int rIn) mutable {
-                    grid[row][col].inputs[(attrToMutate - 1)] = rIn;
-                    return pure(grid);
-                });
-            }
-        });
+	return bind(mutateCell(grid[pointToMutate/params.c][pointToMutate%params.c]), [=](Cell cell) {
+		auto newGrid = grid;
+		newGrid[pointToMutate/params.c][pointToMutate%params.c] = cell;
+		return pure(newGrid);
+    });
 }
 
 std::function<RNGFUNC(Chromosome)(Chromosome)>
@@ -656,13 +530,13 @@ std::function<RNGFUNC(Chromosome)(Chromosome)>
 
 }
 
-RNGFUNC(std::vector<Cell>)  randomColumn(GeneticParams params, unsigned int c) {
-	return sequence(replicate(params.r, randomCell(params, c)));
+RNGFUNC(std::vector<Cell>)  randomColumn(GeneticParams params) {
+	return sequence(replicate(params.r, randomCell()));
 }
 
 RNGFUNC(std::vector<std::vector<Cell>>)  randomCells(GeneticParams params) {
 	return bind(mapM([=](unsigned int c) {
-		return randomColumn(params, c);
+		return randomColumn(params);
 	}, vectorFromTo(0, params.c)), [=](std::vector<std::vector<Cell>> grid) {
 		return pure(transpose(grid));
 	});
@@ -718,8 +592,8 @@ std::function<bool(GAState<Evaluated<Chromosome>>)>
             std::reverse(s.begin(), s.end());
             out << "Normal bitstring:" << std::endl;
             out << std::string(s.begin(), s.end()) << std::endl << std::endl;
-
-            auto largerChrom = fitInLargerChrom(state.population[0].value, 0, currentParams, finalParams);
+	
+            auto largerChrom = state.population[0].value;
             s = map([](bool b) { return b ? '1' : '0'; }, rawSerialize(finalParams, largerChrom));
             std::reverse(s.begin(), s.end());
             out << "Larger bitstring:" << std::endl;
@@ -989,7 +863,7 @@ int main() {
         std::cout << "Normal bitstring:" << std::endl;
         std::cout << std::string(s.begin(), s.end()) << std::endl << std::endl;
 
-        auto largerChrom = fitInLargerChrom(finalSolution.population[0].value, 0, currentParams, finalParams);
+        auto largerChrom = finalSolution.population[0].value;
         s = map(b2c, rawSerialize(finalParams, largerChrom));
         std::reverse(s.begin(), s.end());
         std::cout << "Larger bitstring:" << std::endl;

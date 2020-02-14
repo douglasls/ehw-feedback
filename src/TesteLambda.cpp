@@ -56,8 +56,8 @@ std::vector<std::tuple<std::bitset<8>, std::bitset<8>, std::bitset<8>>>
             { return std::make_tuple(std::bitset<8>(std::get<0>(s)), std::bitset<8>(std::get<1>(s)), std::bitset<8>(std::get<2>(s))); },
             std::vector<std::tuple<const char*, const char*, const char*>>{
 
-				//XOR
-				std::make_tuple("00000000","00000001", "00000001"),
+				//AND
+				std::make_tuple("00000000","00000000", "00000001"),
 				std::make_tuple("00000001","00000000", "00000001"),
 				std::make_tuple("00000010","00000000", "00000001"),
 				std::make_tuple("00000011","00000001", "00000001")
@@ -134,8 +134,8 @@ std::vector<bool> rawSerialize(GeneticParams params, Chromosome chrom) {
 
 	std::vector<bool> totalBits;
 
-	for (unsigned int j = 0; j < params.c; j++) {
-		for (unsigned int i = 0; i < params.r; i++) {
+	for (unsigned int i = 0; i < params.r; i++) {
+		for (unsigned int j = 0; j < params.c; j++) {
 			auto cellBits = serializeCell(chrom.cells[i][j]);
 			totalBits.insert(totalBits.end(), cellBits.begin(), cellBits.end());
 		}
@@ -226,19 +226,15 @@ std::string showInt(unsigned int i) {
 
 std::string showInput(GeneticParams params, unsigned int i) {
 	std::string s;
-	if (i < params.numIn) {
-		s += "#";
-		s += showInt(i);
-	} else {
-		i -= params.numIn;
-        auto col = i / params.r;
-        auto row = i % params.r;
-        s += "(";
-        s += showInt(row);
-        s += ", ";
-        s += showInt(col);
-        s += ")";
-	}
+
+	auto col = i % params.c;
+	auto row = i / params.c;
+	s += "(";
+	s += showInt(row);
+	s += ", ";
+	s += showInt(col);
+	s += ")";
+
 	return s;
 }
 
@@ -327,7 +323,7 @@ uint32_t sendVectorAndGetErrorSum
 
     void* doneProcessingFeedbackAddr = (uint8_t*) fpgaMemory + DONE_PROCESSING_FEEDBACK_BASE;
     *(uint32_t*) doneProcessingFeedbackAddr = 0;
-	std::cout << *(uint32_t*) doneProcessingFeedbackAddr;
+	
 
     void* readyToProcessAddr = (uint8_t*) fpgaMemory + READY_TO_PROCESS_BASE;
     while ((*(uint32_t*) readyToProcessAddr) != 1){
@@ -345,7 +341,7 @@ uint32_t sendVectorAndGetErrorSum
     while ((*(uint32_t*) doneProcessingAddr) != 1) {
         // Esse print esta aqui porque o otimizador do g++ faz o programa
         // ficar preso num loop infinito se isso nao estiver aqui.
-        std::cout << *(uint32_t*) doneProcessingFeedbackAddr;
+        std::cout << "";
     }
 		// FIM
 		high_resolution_clock::time_point t6 = high_resolution_clock::now(); //MARCADOR FINAL DE TEMPO
@@ -497,7 +493,7 @@ std::function<RNGFUNC(Chromosome)(Chromosome)>
 	makeMutation(GeneticParams params, float mutationPercent) {
 
 
-    auto totalElements = params.r * params.c * (params.leNumIn + 1) + params.numOut;
+    auto totalElements = params.r * params.c * 16 + params.numOut;
     auto elementsToMutate = std::ceil(totalElements * mutationPercent);
 
 	return [=](Chromosome chrom) {

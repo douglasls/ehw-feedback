@@ -40,18 +40,13 @@ typedef std::array<bool, 16> Func;
 //TODO: redefinir os parâmetros da estrutura
 #define NUM_IN 2
 #define NUM_OUT 1
-#define INITIAL_ROW_COUNT 1
 #define MUTATION_RATE 0.15
 #define LAMBDA 4
 #define MAX_GENERATIONS 10000
-#define FEED_FORWARD true //true: soh conecta com portas da frente
-#define LAST_ROW_COUNT 5 // Must be lower than or equal to ROW_COUNT
 
 // Circuit parameters
-#define CIRCUIT_ROW_COUNT 5
-#define CIRCUIT_COLUMN_COUNT 5
-#define CIRCUIT_NUM_IN 8
-#define CIRCUIT_NUM_OUT 8
+#define CIRCUIT_ROW_COUNT 2
+#define CIRCUIT_COLUMN_COUNT 2
 
 using namespace std::chrono; // PARA VERIFICAR TEMPO DE PROCESSAMENTO
 
@@ -61,11 +56,11 @@ std::vector<std::tuple<std::bitset<8>, std::bitset<8>, std::bitset<8>>>
             { return std::make_tuple(std::bitset<8>(std::get<0>(s)), std::bitset<8>(std::get<1>(s)), std::bitset<8>(std::get<2>(s))); },
             std::vector<std::tuple<const char*, const char*, const char*>>{
 
-				//somador 1 bit sem carry
-				std::make_tuple("00000000","00000000", "00000011"),
-				std::make_tuple("00000001","00000001", "00000011"),
-				std::make_tuple("00000011","00000010", "00000011"),
-				std::make_tuple("00000010","00000001", "00000011")
+				//XOR
+				std::make_tuple("00000000","00000001", "00000001"),
+				std::make_tuple("00000001","00000000", "00000001"),
+				std::make_tuple("00000010","00000000", "00000001"),
+				std::make_tuple("00000011","00000001", "00000001")
             });
 }
 
@@ -124,8 +119,8 @@ std::vector<uint32_t> convertToPacked(std::vector<bool> v) {
 std::vector<bool> serializeCell(Cell cell) {
 	std::vector<bool> result;
 
-	for(auto i = cell.function.begin(); i != cell.function.end(); ++i){
-		result.push_back(cell.function[*i]);
+	for(auto f : cell.function){
+		result.push_back(f);
 	}
 
 	return result;
@@ -332,6 +327,7 @@ uint32_t sendVectorAndGetErrorSum
 
     void* doneProcessingFeedbackAddr = (uint8_t*) fpgaMemory + DONE_PROCESSING_FEEDBACK_BASE;
     *(uint32_t*) doneProcessingFeedbackAddr = 0;
+	std::cout << *(uint32_t*) doneProcessingFeedbackAddr;
 
     void* readyToProcessAddr = (uint8_t*) fpgaMemory + READY_TO_PROCESS_BASE;
     while ((*(uint32_t*) readyToProcessAddr) != 1){
@@ -349,12 +345,12 @@ uint32_t sendVectorAndGetErrorSum
     while ((*(uint32_t*) doneProcessingAddr) != 1) {
         // Esse print esta aqui porque o otimizador do g++ faz o programa
         // ficar preso num loop infinito se isso nao estiver aqui.
-        std::cout << "";
+        std::cout << *(uint32_t*) doneProcessingFeedbackAddr;
     }
 		// FIM
 		high_resolution_clock::time_point t6 = high_resolution_clock::now(); //MARCADOR FINAL DE TEMPO
 		auto tempCrome = duration_cast<microseconds>( t6 - t5 ).count();
-		std::cout << " TempoCromossomo:" << tempCrome << "microssegundos" << std::endl;
+		// std::cout << " TempoCromossomo:" << tempCrome << "microssegundos" << std::endl;
 
     uint32_t chromErrorSum = 0;
     for (auto addr : errorSumAddrs) {
@@ -453,7 +449,7 @@ RNGFUNC(unsigned int)  randomOutput(GeneticParams params, unsigned int c) {
 	return bind
 			( getRandom()
             , [=](random_type rand) {
-		return pure(rand % (params.numIn + params.r * (FEED_FORWARD ? c : params.c)));
+		return pure(rand % (params.numIn + params.r * params.c));
 	});
 }
 
@@ -825,7 +821,7 @@ int main() {
 	high_resolution_clock::time_point t2 = high_resolution_clock::now();
 	auto tempGasto = duration_cast<microseconds>( t2 - t1 ).count();
 
-	std::cout << " Tempo de envio para FPGA:" << tempGasto << "microssegundos" << std::endl;
+	// std::cout << " Tempo de envio para FPGA:" << tempGasto << "microssegundos" << std::endl;
 		printf("Inicio da evolucao!!!\n\n\n");
 
 	/* Send a raw chromosome and evaluate once
@@ -843,8 +839,8 @@ int main() {
 
 	GeneticParams finalParams = params;
 	finalParams.r = CIRCUIT_ROW_COUNT;
-	finalParams.numIn = CIRCUIT_NUM_IN;
-	finalParams.numOut = CIRCUIT_NUM_OUT;
+	finalParams.numIn = NUM_IN;
+	finalParams.numOut = NUM_OUT;
 
 	auto b2c = [](bool b) {
 	        return b ? '1' : '0';
@@ -878,7 +874,7 @@ int main() {
 	},
 	[fpgaMem, finalParams](GeneticParams params) {
 	    return fpgaGrowingGARoutine(params, finalParams, fpgaMem);
-	}, growingGenParamVec(params, INITIAL_ROW_COUNT, LAST_ROW_COUNT));
+	}, growingGenParamVec(params, CIRCUIT_ROW_COUNT, CIRCUIT_ROW_COUNT));
 
 	evalState(solution, initialRng);
 

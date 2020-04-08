@@ -29,6 +29,7 @@
 #include "Utils.h"
 #include "hps_0.h"
 #include <time.h>
+#include "minbool.h"
 
 // sopc-create-header-files "./testeio.sopcinfo" --single hps_0.h --module hps_0
 
@@ -38,15 +39,14 @@
 typedef std::array<bool, 16> Func;
 
 //TODO: redefinir os parâmetros da estrutura
-#define NUM_IN 2
 #define NUM_OUT 1
 #define MUTATION_RATE 0.15
 #define LAMBDA 4
-#define MAX_GENERATIONS 10000
+#define MAX_GENERATIONS 200000
 
 // Circuit parameters
-#define CIRCUIT_ROW_COUNT 2
-#define CIRCUIT_COLUMN_COUNT 2
+#define CIRCUIT_ROW_COUNT 1
+#define CIRCUIT_COLUMN_COUNT 1
 
 using namespace std::chrono; // PARA VERIFICAR TEMPO DE PROCESSAMENTO
 
@@ -56,11 +56,13 @@ std::vector<std::tuple<std::bitset<8>, std::bitset<8>, std::bitset<8>>>
             { return std::make_tuple(std::bitset<8>(std::get<0>(s)), std::bitset<8>(std::get<1>(s)), std::bitset<8>(std::get<2>(s))); },
             std::vector<std::tuple<const char*, const char*, const char*>>{
 
-				//AND
-				std::make_tuple("00000000","00000000", "00000001"),
-				std::make_tuple("00000001","00000000", "00000001"),
-				std::make_tuple("00000010","00000000", "00000001"),
-				std::make_tuple("00000011","00000001", "00000001")
+			// AND
+			std::make_tuple("00000000","00000000", "00000001"),
+			std::make_tuple("00000010","00000000", "00000001"),
+			std::make_tuple("00000000","00000000", "00000001"),
+			std::make_tuple("00000001","00000000", "00000001"),
+			std::make_tuple("00000011","00000001", "00000001") 
+
             });
 }
 
@@ -207,6 +209,35 @@ unsigned int fitInLargerIndex
 
 //=====================================================================
 //TODO: modificar as funcoes que mostram o cromossomo, abaixo
+
+std::string minibool(Cell cell){
+    using namespace minbool;
+
+	std::array<bool,16> function = cell.function;
+
+    std::vector<uint8_t> on = convertCell2Tab(function);
+
+    std::vector<uint8_t> dc {};
+    std::vector<MinTerm<4>> solution = minimize_boolean<4>(on, dc);
+
+    std::string newTerm = "";
+    std::string finalSolution = "";
+
+    for (auto& term : solution){
+        // std::cout << term << std::endl;
+        for(int i = 0; i<4; i++){
+            newTerm.insert(0, Value2Var(3-i, term[i]));
+        }
+        newTerm += "+";
+        finalSolution += newTerm;
+        newTerm = "";
+    }
+    finalSolution.erase((finalSolution.length()-1),1);
+    // std::cout << finalSolution << std::endl;
+
+    return finalSolution;
+}
+
 std::string showCell(Cell cell) {
 
 	std::string s = "";
@@ -214,7 +245,13 @@ std::string showCell(Cell cell) {
 	for(bool f : cell.function){
 		f ? s += '1' : s += '0'; 
 	}
-	
+    return s;
+}
+
+std::string showBoolExp(Cell cell) {
+
+	std::string s = "";
+	s += minibool(cell);
     return s;
 }
 
@@ -272,7 +309,31 @@ std::string showChromosome(GeneticParams params, Chromosome chrom) {
 			s += formatted[i][j];
 			s += "   ";
 		}
-		s += '\n';
+		s += "\n\n";
+	}
+
+	
+	s += "Boolean Expressions:\n";
+	cellsS =
+			map([=](std::vector<Cell> row) {
+		return map([=](Cell c) { return showBoolExp(c); }, row);
+	}, chrom.cells);
+
+	tCellsS = transpose(cellsS);
+
+	tFormatted = map
+			([=](std::vector<std::string> column) {
+		return format(column);
+	}, tCellsS);
+
+	formatted = transpose(tFormatted);
+
+	for (unsigned int i = 0; i < formatted.size(); i++) {
+		for (unsigned int j = 0; j < formatted[0].size(); j++) {
+			s += formatted[i][j];
+			s += "   ";
+		}
+		s += "\n\n";
 	}
 
 	s += "Outputs:\n";
@@ -445,7 +506,7 @@ RNGFUNC(unsigned int)  randomOutput(GeneticParams params, unsigned int c) {
 	return bind
 			( getRandom()
             , [=](random_type rand) {
-		return pure(rand % (params.numIn + params.r * params.c));
+		return pure(rand % (params.r * params.c));
 	});
 }
 
@@ -493,7 +554,7 @@ std::function<RNGFUNC(Chromosome)(Chromosome)>
 	makeMutation(GeneticParams params, float mutationPercent) {
 
 
-    auto totalElements = params.r * params.c * 16 + params.numOut;
+    auto totalElements = 16 * params.r * params.c + params.numOut;
     auto elementsToMutate = std::ceil(totalElements * mutationPercent);
 
 	return [=](Chromosome chrom) {
@@ -723,9 +784,8 @@ std::vector<GeneticParams> growingGenParamVec(GeneticParams baseParams, unsigned
 
 int main() {
 	GeneticParams params;
-	params.r = 1; // Para cada solucao individual.
+	params.r = CIRCUIT_ROW_COUNT; // Para cada solucao individual.
 	params.c = CIRCUIT_COLUMN_COUNT;
-	params.numIn = NUM_IN;
 	params.numOut = NUM_OUT;
 	params.leNumIn = 2;
 
@@ -835,7 +895,6 @@ int main() {
 
 	GeneticParams finalParams = params;
 	finalParams.r = CIRCUIT_ROW_COUNT;
-	finalParams.numIn = NUM_IN;
 	finalParams.numOut = NUM_OUT;
 
 	auto b2c = [](bool b) {

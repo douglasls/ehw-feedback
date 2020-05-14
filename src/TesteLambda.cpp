@@ -41,12 +41,17 @@ typedef std::array<bool, 16> Func;
 //TODO: redefinir os parâmetros da estrutura
 #define NUM_OUT 1
 #define MUTATION_RATE 0.15
-#define LAMBDA 4
+#define INITIAL_LAMBDA 4
+#define MAX_LAMBDA 12
 #define MAX_GENERATIONS 200000
 
 // Circuit parameters
 #define CIRCUIT_ROW_COUNT 1
-#define CIRCUIT_COLUMN_COUNT 1
+#define CIRCUIT_COLUMN_COUNT 4
+
+// Global variables
+unsigned int lambda = INITIAL_LAMBDA;
+bool solved = false;
 
 using namespace std::chrono; // PARA VERIFICAR TEMPO DE PROCESSAMENTO
 
@@ -56,12 +61,20 @@ std::vector<std::tuple<std::bitset<8>, std::bitset<8>, std::bitset<8>>>
             { return std::make_tuple(std::bitset<8>(std::get<0>(s)), std::bitset<8>(std::get<1>(s)), std::bitset<8>(std::get<2>(s))); },
             std::vector<std::tuple<const char*, const char*, const char*>>{
 
-			// AND
-			std::make_tuple("00000000","00000000", "00000001"),
+			//FLIP-FLOP D	
+			std::make_tuple("00000000","00000000", "00000000"),
 			std::make_tuple("00000010","00000000", "00000001"),
+			std::make_tuple("00000011","00000000", "00000001"),
+			std::make_tuple("00000001","00000000", "00000001"),
 			std::make_tuple("00000000","00000000", "00000001"),
 			std::make_tuple("00000001","00000000", "00000001"),
-			std::make_tuple("00000011","00000001", "00000001") 
+			std::make_tuple("00000011","00000001", "00000001"),
+			std::make_tuple("00000010","00000001", "00000001"),
+			std::make_tuple("00000000","00000001", "00000001"),
+			std::make_tuple("00000001","00000001", "00000001"),
+			std::make_tuple("00000000","00000001", "00000001"),
+			std::make_tuple("00000010","00000000", "00000000"),
+			std::make_tuple("00000000","00000000", "00000000")
 
             });
 }
@@ -691,7 +704,7 @@ RNGFUNC(GAState<Evaluated<Chromosome>>)
                 "fpgaGARoutine's fitness function must be of type T -> bool");
 
     auto mutationFunc = makeMutation(params, MUTATION_RATE);
-    auto strategy = lambdaPlusN<Chromosome>(fitnessFunc, mutationFunc, LAMBDA); //MEDIA 1+LAMBDA AQUI??
+    auto strategy = lambdaPlusN<Chromosome>(fitnessFunc, mutationFunc, lambda); //MEDIA 1+LAMBDA AQUI??
     auto gaFunc = makeGAFunction<Evaluated<Chromosome>>(strategy);
     auto termination = makeCorrectTermination(params, finalParams, fitnessFunc, fpgaMem);
 
@@ -783,155 +796,172 @@ std::vector<GeneticParams> growingGenParamVec(GeneticParams baseParams, unsigned
 }
 
 int main() {
-	GeneticParams params;
-	params.r = CIRCUIT_ROW_COUNT; // Para cada solucao individual.
-	params.c = CIRCUIT_COLUMN_COUNT;
-	params.numOut = NUM_OUT;
-	params.leNumIn = 2;
+	while (lambda <= MAX_LAMBDA && !solved){
+		GeneticParams params;
+		params.r = CIRCUIT_ROW_COUNT; // Para cada solucao individual.
+		params.c = CIRCUIT_COLUMN_COUNT;
+		params.numOut = NUM_OUT;
+		params.leNumIn = 2;
 
-	srand(time(NULL));
-	auto initialRng = rand();
+		srand(time(NULL));
+		auto initialRng = rand();
 
-	printf("Seed: %d\n", initialRng);
+		printf("Seed: %d\n", initialRng);
 
-	auto fpgaMem = openFPGAMemory();
+		auto fpgaMem = openFPGAMemory();
 
-	auto io = inputOutputValidSequences();
+		auto io = inputOutputValidSequences();
 
-	// Send the size of the sequences to be processed
-	void* seqToProcAddr = (uint8_t*) fpgaMem + SEQUENCES_TO_PROCESS_BASE;
-	*(uint32_t*) seqToProcAddr = io.size();
+		// Send the size of the sequences to be processed
+		void* seqToProcAddr = (uint8_t*) fpgaMem + SEQUENCES_TO_PROCESS_BASE;
+		*(uint32_t*) seqToProcAddr = io.size();
 
-	//Seleciona a pio 
-	void* inputAddress = (uint8_t*) fpgaMem + INPUT_SEQUENCE_0_BASE;
-	void* outputAddress = (uint8_t*) fpgaMem + EXPECTED_OUTPUT_0_BASE;
-	void* validOutputAddress = (uint8_t*) fpgaMem + VALID_OUTPUT_0_BASE;
+		//Seleciona a pio 
+		void* inputAddress = (uint8_t*) fpgaMem + INPUT_SEQUENCE_0_BASE;
+		void* outputAddress = (uint8_t*) fpgaMem + EXPECTED_OUTPUT_0_BASE;
+		void* validOutputAddress = (uint8_t*) fpgaMem + VALID_OUTPUT_0_BASE;
 
-	//Sinais de controle serial
-	//Entrada Processador C++
-	void* nextSampleAddress = (uint8_t*) fpgaMem + NEXTSAMPLE_BASE;
+		//Sinais de controle serial
+		//Entrada Processador C++
+		void* nextSampleAddress = (uint8_t*) fpgaMem + NEXTSAMPLE_BASE;
 
-	//Saida processador C++
-	void* sampleIndexAddress = (uint8_t*) fpgaMem + SAMPLEINDEX_BASE;
-	void* preparingNextSampleAddress = (uint8_t*) fpgaMem + PREPARINGNEXTSAMPLE_BASE;
-	void* writeSampleAddress = (uint8_t*) fpgaMem + WRITESAMPLE_BASE;
+		//Saida processador C++
+		void* sampleIndexAddress = (uint8_t*) fpgaMem + SAMPLEINDEX_BASE;
+		void* preparingNextSampleAddress = (uint8_t*) fpgaMem + PREPARINGNEXTSAMPLE_BASE;
+		void* writeSampleAddress = (uint8_t*) fpgaMem + WRITESAMPLE_BASE;
 
-	//Inicializando saidas
-	*(uint32_t*) preparingNextSampleAddress = 0;
-	*(uint32_t*) sampleIndexAddress = 0;		//entrada na maquina de estados
-	*(uint32_t*) writeSampleAddress = 0;	
+		//Inicializando saidas
+		*(uint32_t*) preparingNextSampleAddress = 0;
+		*(uint32_t*) sampleIndexAddress = 0;		//entrada na maquina de estados
+		*(uint32_t*) writeSampleAddress = 0;	
 
-	high_resolution_clock::time_point t1 = high_resolution_clock::now(); //INICIO DO MARCADOR DE TEMPO PARA ENVIO DOS INDIVIDUOS A FPGA
+		high_resolution_clock::time_point t1 = high_resolution_clock::now(); //INICIO DO MARCADOR DE TEMPO PARA ENVIO DOS INDIVIDUOS A FPGA
 
-	for (unsigned int i = 0; i < io.size(); i += 4) {
-	    for(unsigned int j = 0; j < 4; j++){
-			auto seg = j % 4; //precisa pra dividir os 32 bits em 4 de 8
+		for (unsigned int i = 0; i < io.size(); i += 4) {
+			for(unsigned int j = 0; j < 4; j++){
+				auto seg = j % 4; //precisa pra dividir os 32 bits em 4 de 8
 
-			unsigned int linha = i+j;
-			
-			printf("amostra %d\n", i+j);
-			*(uint32_t*) preparingNextSampleAddress = 1; //Manda FPGA sair do IDLE
-			while((*(uint32_t*) nextSampleAddress) == 1){ //Espera FPGA sair do IDLE
+				unsigned int linha = i+j;
+				
+				printf("amostra %d\n", i+j);
+				*(uint32_t*) preparingNextSampleAddress = 1; //Manda FPGA sair do IDLE
+				while((*(uint32_t*) nextSampleAddress) == 1){ //Espera FPGA sair do IDLE
+					// Esse print esta aqui porque o otimizador do g++ faz o programa
+					// ficar preso num loop infinito se isso nao estiver aqui.
+					std::cout << "";
+				}
+
+				*(uint32_t*) preparingNextSampleAddress = 0;
+
+				//Transforma o bitset da seq em 32 bits e faz shift
+				uint32_t inputVal = std::get<0>(io[linha]).to_ulong() << (8 * seg);
+				uint32_t outputVal = std::get<1>(io[linha]).to_ulong() << (8 * seg);
+				uint32_t validOutputVal = std::get<2>(io[linha]).to_ulong() << (8 * seg);
+				
+				//Insere a seq no pio diretamente (1 vez) ou com or(|)
+				*(uint32_t*) inputAddress = seg == 0 ? inputVal : *(uint32_t*) inputAddress | inputVal;
+				*(uint32_t*) outputAddress = seg == 0 ? outputVal : *(uint32_t*) outputAddress | outputVal;
+				*(uint32_t*) validOutputAddress = seg == 0 ? validOutputVal : *(uint32_t*) validOutputAddress | validOutputVal;		
+			}
+
+			//Escreve o indice
+			*(uint32_t*) sampleIndexAddress = i/4;
+
+			printf("ESCRITA INDICE %d\n",i/4);
+			std::cout << "input : " << std::bitset<32>(*(uint32_t*) inputAddress) << "\n";
+			std::cout << "output: " << std::bitset<32>(*(uint32_t*) outputAddress) << "\n";
+			std::cout << "valid : " << std::bitset<32>(*(uint32_t*) validOutputAddress) << "\n";
+	
+			//Manda a FPGA escrever
+			*(uint32_t*) writeSampleAddress = 1;
+
+
+			//Aguarda fim da escrita e FPGA retornar para IDLE
+			while(*(uint32_t*) nextSampleAddress == 0){
 				// Esse print esta aqui porque o otimizador do g++ faz o programa
 				// ficar preso num loop infinito se isso nao estiver aqui.
 				std::cout << "";
 			}
-
-			*(uint32_t*) preparingNextSampleAddress = 0;
-
-			//Transforma o bitset da seq em 32 bits e faz shift
-			uint32_t inputVal = std::get<0>(io[linha]).to_ulong() << (8 * seg);
-			uint32_t outputVal = std::get<1>(io[linha]).to_ulong() << (8 * seg);
-			uint32_t validOutputVal = std::get<2>(io[linha]).to_ulong() << (8 * seg);
 			
-			//Insere a seq no pio diretamente (1 vez) ou com or(|)
-			*(uint32_t*) inputAddress = seg == 0 ? inputVal : *(uint32_t*) inputAddress | inputVal;
-			*(uint32_t*) outputAddress = seg == 0 ? outputVal : *(uint32_t*) outputAddress | outputVal;
-			*(uint32_t*) validOutputAddress = seg == 0 ? validOutputVal : *(uint32_t*) validOutputAddress | validOutputVal;		
+			*(uint32_t*) writeSampleAddress = 0;
+
 		}
 
-		//Escreve o indice
-		*(uint32_t*) sampleIndexAddress = i/4;
+		//FINAL DO MARCADOR DE TEMPO DO ENVIO DE INDIVIDUOS A FPGA
+		high_resolution_clock::time_point t2 = high_resolution_clock::now();
+		auto tempGasto = duration_cast<microseconds>( t2 - t1 ).count();
 
-		printf("ESCRITA INDICE %d\n",i/4);
-		std::cout << "input : " << std::bitset<32>(*(uint32_t*) inputAddress) << "\n";
-		std::cout << "output: " << std::bitset<32>(*(uint32_t*) outputAddress) << "\n";
-		std::cout << "valid : " << std::bitset<32>(*(uint32_t*) validOutputAddress) << "\n";
- 
-		//Manda a FPGA escrever
-		*(uint32_t*) writeSampleAddress = 1;
+		// std::cout << " Tempo de envio para FPGA:" << tempGasto << "microssegundos" << std::endl;
+			std::cout << "Inicio da evolucao. Configuracoes:" << std::endl;
+			std::cout << "Lamda: "<< lambda << std::endl;
+			std::cout << "Linhas x Colunas: "<< CIRCUIT_ROW_COUNT << " x " << CIRCUIT_COLUMN_COUNT << std::endl;
+			std::cout << "Saidas: "<< NUM_OUT << std::endl;
 
+		/* Send a raw chromosome and evaluate once
 
-		//Aguarda fim da escrita e FPGA retornar para IDLE
-		while(*(uint32_t*) nextSampleAddress == 0){
-			// Esse print esta aqui porque o otimizador do g++ faz o programa
-			// ficar preso num loop infinito se isso nao estiver aqui.
-			std::cout << "";
-		}
-		
-		*(uint32_t*) writeSampleAddress = 0;
+		std::string bitstring = "000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000101001000000000001001001001001";
+		std::reverse(bitstring.begin(), bitstring.end());
+		auto data = std::vector<char>(bitstring.begin(), bitstring.end());
+		auto fun = [](char c) {
+			return c == '1' ? true : false;
+		};
+		std::cout << sendVectorAndGetErrorSum(convertToPacked(map(fun, data)), fpgaMem) << std::endl;
 
+		return 0;
+		*/
+
+		GeneticParams finalParams = params;
+		finalParams.r = CIRCUIT_ROW_COUNT;
+		finalParams.numOut = NUM_OUT;
+
+		auto b2c = [](bool b) {
+				return b ? '1' : '0';
+			};
+
+		auto solution = whileFoldM([=](GeneticParams currentParams, GAState<Evaluated<Chromosome>> finalSolution) {
+			if (finalSolution.population[0].score > 0) {
+				if(lambda <= MAX_LAMBDA){
+					std::cout << "Incriasing lambda: " << lambda++ << std::endl;
+				}else
+				{
+					std::cout << "Lambda reached its maximum value : "<< lambda << "." << std::endl;
+				}
+				
+
+				return true;
+			}
+			solved = true;
+			printf("Solution found with lambda %d:\n", lambda);
+			printf("Num out: %d\n", NUM_OUT);
+			printf("Mutation Rate: %d\n", MUTATION_RATE);
+			printf("INITIAL LAMBDA: %d\n", INITIAL_LAMBDA);
+			printf("MAX GEN: %d\n", MAX_GENERATIONS);
+			printf("Row x Col: %d x %d\n\n", CIRCUIT_ROW_COUNT, CIRCUIT_COLUMN_COUNT);
+			printf("%s\n", showChromosome(currentParams, finalSolution.population[0].value).c_str());
+			auto s = map(b2c, rawSerialize(currentParams, finalSolution.population[0].value));
+			std::reverse(s.begin(), s.end());
+			std::cout << "Normal bitstring:" << std::endl;
+			std::cout << std::string(s.begin(), s.end()) << std::endl << std::endl;
+
+			auto largerChrom = finalSolution.population[0].value;
+			s = map(b2c, rawSerialize(finalParams, largerChrom));
+			std::reverse(s.begin(), s.end());
+			std::cout << "Larger bitstring:" << std::endl;
+			std::cout << std::string(s.begin(), s.end()) << std::endl << std::endl;
+
+			auto fit = makeGrowingFPGAFitnessFunc(currentParams, finalParams, fpgaMem)(finalSolution.population[0].value);
+			printf("Fitness recalculated: %g\n", fit);
+
+			dumpMemoryToFile(fpgaMem, TWO_PORT_MEM_BASE, "Dump_Recalculated.txt");
+
+			return false;
+		},
+		[fpgaMem, finalParams](GeneticParams params) {
+			return fpgaGrowingGARoutine(params, finalParams, fpgaMem);
+		}, growingGenParamVec(params, CIRCUIT_ROW_COUNT, CIRCUIT_ROW_COUNT));
+		evalState(solution, initialRng);
 	}
 
-	 //FINAL DO MARCADOR DE TEMPO DO ENVIO DE INDIVIDUOS A FPGA
-	high_resolution_clock::time_point t2 = high_resolution_clock::now();
-	auto tempGasto = duration_cast<microseconds>( t2 - t1 ).count();
-
-	// std::cout << " Tempo de envio para FPGA:" << tempGasto << "microssegundos" << std::endl;
-		printf("Inicio da evolucao!!!\n\n\n");
-
-	/* Send a raw chromosome and evaluate once
-
-	std::string bitstring = "000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000101001000000000001001001001001";
-	std::reverse(bitstring.begin(), bitstring.end());
-	auto data = std::vector<char>(bitstring.begin(), bitstring.end());
-	auto fun = [](char c) {
-	    return c == '1' ? true : false;
-	};
-	std::cout << sendVectorAndGetErrorSum(convertToPacked(map(fun, data)), fpgaMem) << std::endl;
-
 	return 0;
-	 */
 
-	GeneticParams finalParams = params;
-	finalParams.r = CIRCUIT_ROW_COUNT;
-	finalParams.numOut = NUM_OUT;
-
-	auto b2c = [](bool b) {
-	        return b ? '1' : '0';
-	    };
-
-	auto solution = whileFoldM([=](GeneticParams currentParams, GAState<Evaluated<Chromosome>> finalSolution) {
-	    if (finalSolution.population[0].score > 0) {
-	        std::cout << "Increasing number of rows by one, new value: " << currentParams.r + 1 << std::endl;
-	        return true;
-	    }
-
-        printf("Solution:\n");
-        printf("%s\n", showChromosome(currentParams, finalSolution.population[0].value).c_str());
-        auto s = map(b2c, rawSerialize(currentParams, finalSolution.population[0].value));
-        std::reverse(s.begin(), s.end());
-        std::cout << "Normal bitstring:" << std::endl;
-        std::cout << std::string(s.begin(), s.end()) << std::endl << std::endl;
-
-        auto largerChrom = finalSolution.population[0].value;
-        s = map(b2c, rawSerialize(finalParams, largerChrom));
-        std::reverse(s.begin(), s.end());
-        std::cout << "Larger bitstring:" << std::endl;
-        std::cout << std::string(s.begin(), s.end()) << std::endl << std::endl;
-
-        auto fit = makeGrowingFPGAFitnessFunc(currentParams, finalParams, fpgaMem)(finalSolution.population[0].value);
-        printf("Fitness recalculated: %g\n", fit);
-
-        dumpMemoryToFile(fpgaMem, TWO_PORT_MEM_BASE, "Dump_Recalculated.txt");
-
-	    return false;
-	},
-	[fpgaMem, finalParams](GeneticParams params) {
-	    return fpgaGrowingGARoutine(params, finalParams, fpgaMem);
-	}, growingGenParamVec(params, CIRCUIT_ROW_COUNT, CIRCUIT_ROW_COUNT));
-
-	evalState(solution, initialRng);
-
-	return 0;
 }

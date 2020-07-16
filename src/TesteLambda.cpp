@@ -4,6 +4,7 @@
 // Version     :
 // Copyright   : Your copyright notice
 // Description : Hello World in C++, Ansi-style
+// Compile	   : arm-linux-gnueabihf-g++ TesteLambda.cpp -O3 -std=c++1y -static-libstdc++
 //============================================================================
 
 #include <iostream>
@@ -24,6 +25,7 @@
 #include <stdint.h>
 #include <stdio.h>
 #include <cassert>
+#include <math.h>
 #include "GenericGA.h"
 #include "random.h"
 #include "Utils.h"
@@ -40,18 +42,25 @@ typedef std::array<bool, 16> Func;
 
 //TODO: redefinir os parâmetros da estrutura
 #define NUM_OUT 1
+#define NUM_IN 2
 #define MUTATION_RATE 0.15
 #define INITIAL_LAMBDA 4
-#define MAX_LAMBDA 12
+#define MAX_LAMBDA 10
 #define MAX_GENERATIONS 200000
+#define TRIES_PER_LAMBDA 5
 
 // Circuit parameters
-#define CIRCUIT_ROW_COUNT 1
-#define CIRCUIT_COLUMN_COUNT 4
+#define CIRCUIT_ROW_COUNT 2
+#define CIRCUIT_COLUMN_COUNT 1
 
 // Global variables
 unsigned int lambda = INITIAL_LAMBDA;
+unsigned int attempt = 1;
 bool solved = false;
+
+#define NUM_MUX CIRCUIT_ROW_COUNT * CIRCUIT_COLUMN_COUNT
+#define MUX_BITS_SEL (int) ceil(log2(NUM_IN + 2))
+#define MUX_NUM_IN pow(2, MUX_BITS_SEL)
 
 using namespace std::chrono; // PARA VERIFICAR TEMPO DE PROCESSAMENTO
 
@@ -61,20 +70,23 @@ std::vector<std::tuple<std::bitset<8>, std::bitset<8>, std::bitset<8>>>
             { return std::make_tuple(std::bitset<8>(std::get<0>(s)), std::bitset<8>(std::get<1>(s)), std::bitset<8>(std::get<2>(s))); },
             std::vector<std::tuple<const char*, const char*, const char*>>{
 
-			//FLIP-FLOP D	
-			std::make_tuple("00000000","00000000", "00000000"),
-			std::make_tuple("00000010","00000000", "00000001"),
-			std::make_tuple("00000011","00000000", "00000001"),
-			std::make_tuple("00000001","00000000", "00000001"),
-			std::make_tuple("00000000","00000000", "00000001"),
-			std::make_tuple("00000001","00000000", "00000001"),
-			std::make_tuple("00000011","00000001", "00000001"),
-			std::make_tuple("00000010","00000001", "00000001"),
-			std::make_tuple("00000000","00000001", "00000001"),
-			std::make_tuple("00000001","00000001", "00000001"),
-			std::make_tuple("00000000","00000001", "00000001"),
-			std::make_tuple("00000010","00000000", "00000000"),
-			std::make_tuple("00000000","00000000", "00000000")
+				
+//AND 2i_1o
+std::make_tuple("00000000", "00000000", "00000001"),
+std::make_tuple("00000010", "00000000", "00000001"),
+std::make_tuple("00000000", "00000000", "00000001"),
+std::make_tuple("00000001", "00000000", "00000001"),
+
+std::make_tuple("00000011", "00000001", "00000001"),
+std::make_tuple("00000010", "00000000", "00000001"),
+std::make_tuple("00000011", "00000001", "00000001"),
+std::make_tuple("00000001", "00000000", "00000001"),
+
+std::make_tuple("00000000", "00000000", "00000001"),
+std::make_tuple("00000000", "00000000", "00000000"), //FIO
+std::make_tuple("00000000", "00000000", "00000000"), //FIO
+std::make_tuple("00000000", "00000000", "00000000") //FIO
+
 
             });
 }
@@ -82,10 +94,15 @@ std::vector<std::tuple<std::bitset<8>, std::bitset<8>, std::bitset<8>>>
 //TODO: checar todas as referências do tipo cell.inputs ou cell.function
 struct Cell {
 	std::array<bool,16> function;
+	std::array<bool,MUX_BITS_SEL> sel0;
+	std::array<bool,MUX_BITS_SEL> sel1;
+	std::array<bool,MUX_BITS_SEL> sel2;
+	std::array<bool,MUX_BITS_SEL> sel3;
 };
 
+
 struct GeneticParams {
-	unsigned int r, c, numIn, numOut, leNumIn;
+	unsigned int r, c, numIn, numOut;
 };
 
 struct Chromosome {
@@ -141,6 +158,29 @@ std::vector<bool> serializeCell(Cell cell) {
 	return result;
 }
 
+std::vector<bool> serializeMux(Cell cell) {
+	std::vector<bool> result;
+
+	for(auto s : cell.sel0){
+		result.push_back(s);
+	}
+
+	for(auto s : cell.sel1){
+		result.push_back(s);
+	}
+
+	for(auto s : cell.sel2){
+		result.push_back(s);
+	}
+
+	for(auto s : cell.sel3){
+		result.push_back(s);
+	}
+
+	return result;
+
+}
+
 std::vector<bool> rawSerialize(GeneticParams params, Chromosome chrom) {
  	std::vector<uint32_t> result;
 
@@ -163,6 +203,15 @@ std::vector<bool> rawSerialize(GeneticParams params, Chromosome chrom) {
 	for (auto out : outBits) {
         totalBits.insert(totalBits.end(), out.begin(), out.end());
 	}
+
+	for (unsigned int i = 0; i < params.r; i++) {
+		for (unsigned int j = 0; j < params.c; j++) {
+			auto cellBits = serializeMux(chrom.cells[i][j]);
+			totalBits.insert(totalBits.end(), cellBits.begin(), cellBits.end());
+		}
+	}
+
+	
 
 	return totalBits;
 }
@@ -545,8 +594,28 @@ RNGFUNC(Cell)  randomCell()
 
 RNGFUNC(Cell) mutateCell(Cell cell){
 	return bind(getRandom(), [=](random_type rand) {
+		int cell_elements = 16 + 4 * MUX_BITS_SEL;
 		Cell cellMut = cell;
-		cellMut.function[rand % 15] = !cellMut.function[rand % 15];
+		if (rand % cell_elements < 16){
+			cellMut.function[rand % 15] = !cellMut.function[rand % 15];
+		}else{
+			switch(rand % 4){
+				case 0:
+					cellMut.sel0[rand % MUX_BITS_SEL] = !cellMut.sel0[rand % MUX_BITS_SEL];
+				break;
+				case 1:
+					cellMut.sel1[rand % MUX_BITS_SEL] = !cellMut.sel1[rand % MUX_BITS_SEL];
+				break;
+				case 2:
+					cellMut.sel2[rand % MUX_BITS_SEL] = !cellMut.sel2[rand % MUX_BITS_SEL];
+				break;
+				case 3:
+					cellMut.sel3[rand % MUX_BITS_SEL] = !cellMut.sel3[rand % MUX_BITS_SEL];
+				break;
+				default:
+				break;
+			}
+		}
 		return pure(cellMut);
 	});
 }
@@ -566,8 +635,9 @@ RNGFUNC(std::vector<std::vector<Cell>>)  mutateGrid
 std::function<RNGFUNC(Chromosome)(Chromosome)>
 	makeMutation(GeneticParams params, float mutationPercent) {
 
+	int cell_elements = 16 + 4 * MUX_BITS_SEL;
 
-    auto totalElements = 16 * params.r * params.c + params.numOut;
+    auto totalElements = cell_elements * params.r * params.c + params.numOut;
     auto elementsToMutate = std::ceil(totalElements * mutationPercent);
 
 	return [=](Chromosome chrom) {
@@ -671,7 +741,13 @@ std::function<bool(GAState<Evaluated<Chromosome>>)>
 
             return true;
         }
-        if (state.generation % 1 == 0) {	//MOSTRAR O NUMERO DE CADA GERACAO
+        if (state.generation % 200 == 0) {	//MOSTRAR O NUMERO DE CADA GERACAO
+			auto b2c = [](bool b) {
+				return b ? '1' : '0';
+			};
+			auto s = map(b2c, rawSerialize(currentParams, state.population[0].value));
+			std::reverse(s.begin(), s.end());
+			std::cout << std::string(s.begin(), s.end()) << std::endl << std::endl;
             printf("%d %g\n", state.generation, state.population[0].score);
         }
         return state.generation < MAX_GENERATIONS;
@@ -796,12 +872,13 @@ std::vector<GeneticParams> growingGenParamVec(GeneticParams baseParams, unsigned
 }
 
 int main() {
+
 	while (lambda <= MAX_LAMBDA && !solved){
+
 		GeneticParams params;
 		params.r = CIRCUIT_ROW_COUNT; // Para cada solucao individual.
 		params.c = CIRCUIT_COLUMN_COUNT;
 		params.numOut = NUM_OUT;
-		params.leNumIn = 2;
 
 		srand(time(NULL));
 		auto initialRng = rand();
@@ -920,7 +997,11 @@ int main() {
 
 		auto solution = whileFoldM([=](GeneticParams currentParams, GAState<Evaluated<Chromosome>> finalSolution) {
 			if (finalSolution.population[0].score > 0) {
+				if(attempt <= TRIES_PER_LAMBDA){
+					std::cout << "Attempt number " << attempt++ << std::endl;
+				}else 
 				if(lambda <= MAX_LAMBDA){
+					attempt = 1;
 					std::cout << "Incriasing lambda: " << lambda++ << std::endl;
 				}else
 				{

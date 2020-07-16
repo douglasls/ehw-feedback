@@ -35,6 +35,20 @@
         "type_traits": "cpp",
         "tuple": "cpp",
         "typeinfo": "cpp",
-        "utility": "cpp"
+        "utility": "cpp",
+        "chrono": "cpp",
+        "cstdarg": "cpp",
+        "list": "cpp",
+        "numeric": "cpp",
+        "ratio": "cpp",
+        "atomic": "cpp",
+        "cstddef": "cpp",
+        "unordered_set": "cpp",
+        "algorithm": "cpp",
+        "iterator": "cpp",
+        "memory": "cpp",
+        "memory_resource": "cpp",
+        "random": "cpp",
+        "string": "cpp"
     }
 }

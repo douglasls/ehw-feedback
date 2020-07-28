@@ -421,6 +421,13 @@ void sendVectorToFPGA(std::vector<uint32_t> vec, void* fpgaMemory) {
 		CHROM_SEG_30_BASE
 	};
 
+	// Testando novo Design
+	vec = {1,1,1,1,0,1,1,0,1,1,1,0,1,1,0,0,1,0,0,1,1,0,1,0,0,0,0,1,0,0,0,1,0,0,1,0,1,1,1,1,1,0,1,0,0,0,0,0,0};
+
+    for(int i=0; i < vec.size(); i++){
+        std::cout << vec.at(i) << ", ";
+    }
+
 	// Sending serialized chromosome to FPGA.
 	for (unsigned int i = 0; i < vec.size(); i++) {
 		void* segmentAddr = (uint8_t*) fpgaMemory + segmentAddrs[i];

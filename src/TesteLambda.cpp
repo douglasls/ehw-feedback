@@ -408,6 +408,8 @@ std::string minibool(Cell cell){
 			// }else{
 			// 	newTerm.insert(0, Value2Var(3-i, term[i], entradas));
 			// }
+
+			// Verifica se algum dos termos adiante sera colocado (term[j+1] != 2) e passa o parametro para adicionar um asterisco apos o termo
 			int asterisco = 0;
 			for(int j = i; j<3; j++){
 				if(term[j+1] != 2){

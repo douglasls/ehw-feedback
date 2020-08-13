@@ -409,14 +409,14 @@ std::string minibool(Cell cell){
 			// 	newTerm.insert(0, Value2Var(3-i, term[i], entradas));
 			// }
 			int asterisco = 1;
-			for(int j = i; j<4; j++){
+			for(int j = i; j<3; j++){
 				if(term[j+1] == 2){
 					asterisco = 0;
 				}
 			}
 			
 			newTerm.insert(0, Value2Var(3-i, term[i], entradas, asterisco));
-						
+
         }
         newTerm += "+";
         finalSolution += newTerm;

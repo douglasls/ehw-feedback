@@ -1,9 +1,9 @@
 //============================================================================
 // Name        : TesteLambda.cpp
-// Author      : 
+// Author      : Vitor Coimbra, Gabriel Arão e Douglas Lustosa
 // Version     :
 // Copyright   : Your copyright notice
-// Description : Hello World in C++, Ansi-style
+// Description : 	Implementação do algoritmo genetico lambda+1 para evolucao extrinseca
 // Compile	   : arm-linux-gnueabihf-g++ TesteLambda.cpp -O3 -std=c++1y -static-libstdc++
 //============================================================================
 
@@ -41,8 +41,8 @@
 typedef std::array<bool, 16> Func;
 
 //TODO: redefinir os parâmetros da estrutura
-#define NUM_OUT 1
-#define NUM_IN 2
+#define NUM_OUT 3
+#define NUM_IN 4
 #define MUTATION_RATE 0.15
 #define INITIAL_LAMBDA 4
 #define MAX_LAMBDA 10
@@ -50,7 +50,7 @@ typedef std::array<bool, 16> Func;
 #define TRIES_PER_LAMBDA 5
 
 // Circuit parameters
-#define CIRCUIT_ROW_COUNT 2
+#define CIRCUIT_ROW_COUNT 3
 #define CIRCUIT_COLUMN_COUNT 1
 
 // Global variables
@@ -62,6 +62,8 @@ bool solved = false;
 #define MUX_BITS_SEL (int) ceil(log2(NUM_IN + 2))
 #define MUX_NUM_IN pow(2, MUX_BITS_SEL)
 
+typedef std::array<bool, MUX_BITS_SEL> Sel;
+
 using namespace std::chrono; // PARA VERIFICAR TEMPO DE PROCESSAMENTO
 
 std::vector<std::tuple<std::bitset<8>, std::bitset<8>, std::bitset<8>>>
@@ -70,24 +72,91 @@ std::vector<std::tuple<std::bitset<8>, std::bitset<8>, std::bitset<8>>>
             { return std::make_tuple(std::bitset<8>(std::get<0>(s)), std::bitset<8>(std::get<1>(s)), std::bitset<8>(std::get<2>(s))); },
             std::vector<std::tuple<const char*, const char*, const char*>>{
 
-				
-//AND 2i_1o
-std::make_tuple("00000000", "00000000", "00000001"),
-std::make_tuple("00000010", "00000000", "00000001"),
-std::make_tuple("00000000", "00000000", "00000001"),
-std::make_tuple("00000001", "00000000", "00000001"),
+//COMPARADOR 4i_3o
+std::make_tuple("00000000", "00000000", "00000111"),
+std::make_tuple("00000001", "00000001", "00000111"),
+std::make_tuple("00000101", "00000010", "00000111"),
+std::make_tuple("00000100", "00000100", "00000111"),
 
-std::make_tuple("00000011", "00000001", "00000001"),
-std::make_tuple("00000010", "00000000", "00000001"),
-std::make_tuple("00000011", "00000001", "00000001"),
-std::make_tuple("00000001", "00000000", "00000001"),
+std::make_tuple("00000000", "00000010", "00000111"),
+std::make_tuple("00000001", "00000001", "00000111"),
+std::make_tuple("00000011", "00000001", "00000111"),
+std::make_tuple("00000111", "00000001", "00000111"),
 
-std::make_tuple("00000000", "00000000", "00000001"),
-std::make_tuple("00000000", "00000000", "00000000"), //FIO
-std::make_tuple("00000000", "00000000", "00000000"), //FIO
-std::make_tuple("00000000", "00000000", "00000000") //FIO
+std::make_tuple("00000101", "00000010", "00000111"),
+std::make_tuple("00000100", "00000100", "00000111"),
+std::make_tuple("00000000", "00000010", "00000111"),
+std::make_tuple("00001000", "00000100", "00000111"),
 
+std::make_tuple("00001100", "00000100", "00000111"),
+std::make_tuple("00001101", "00000100", "00000111"),
+std::make_tuple("00000101", "00000010", "00000111"),
+std::make_tuple("00001101", "00000100", "00000111"),
 
+std::make_tuple("00001001", "00000100", "00000111"),
+std::make_tuple("00001011", "00000001", "00000111"),
+std::make_tuple("00001111", "00000010", "00000111"),
+std::make_tuple("00001101", "00000100", "00000111"),
+
+std::make_tuple("00001100", "00000100", "00000111"),
+std::make_tuple("00000100", "00000100", "00000111"),
+std::make_tuple("00000110", "00000001", "00000111"),
+std::make_tuple("00001110", "00000100", "00000111"),
+
+std::make_tuple("00000110", "00000001", "00000111"),
+std::make_tuple("00000111", "00000001", "00000111"),
+std::make_tuple("00000110", "00000001", "00000111"),
+std::make_tuple("00000100", "00000100", "00000111"),
+
+std::make_tuple("00001100", "00000100", "00000111"),
+std::make_tuple("00001110", "00000100", "00000111"),
+std::make_tuple("00001010", "00000010", "00000111"),
+std::make_tuple("00000010", "00000001", "00000111"),
+
+std::make_tuple("00000011", "00000001", "00000111"),
+std::make_tuple("00000111", "00000001", "00000111"),
+std::make_tuple("00001111", "00000010", "00000111"),
+std::make_tuple("00001011", "00000001", "00000111"),
+
+std::make_tuple("00001010", "00000010", "00000111"),
+std::make_tuple("00000010", "00000001", "00000111"),
+std::make_tuple("00000011", "00000001", "00000111"),
+std::make_tuple("00000001", "00000001", "00000111"),
+
+std::make_tuple("00000101", "00000010", "00000111"),
+std::make_tuple("00000111", "00000001", "00000111"),
+std::make_tuple("00001111", "00000010", "00000111"),
+std::make_tuple("00001110", "00000100", "00000111"),
+
+std::make_tuple("00001100", "00000100", "00000111"),
+std::make_tuple("00001000", "00000100", "00000111"),
+std::make_tuple("00001001", "00000100", "00000111"),
+std::make_tuple("00000001", "00000001", "00000111"),
+
+std::make_tuple("00001001", "00000100", "00000111"),
+std::make_tuple("00001000", "00000100", "00000111"),
+std::make_tuple("00001010", "00000010", "00000111"),
+std::make_tuple("00001110", "00000100", "00000111"),
+
+std::make_tuple("00001111", "00000010", "00000111"),
+std::make_tuple("00001101", "00000100", "00000111"),
+std::make_tuple("00001001", "00000100", "00000111"),
+std::make_tuple("00001011", "00000001", "00000111"),
+
+std::make_tuple("00000011", "00000001", "00000111"),
+std::make_tuple("00001011", "00000001", "00000111"),
+std::make_tuple("00001010", "00000010", "00000111"),
+std::make_tuple("00001000", "00000100", "00000111"),
+
+std::make_tuple("00000000", "00000010", "00000111"),
+std::make_tuple("00000010", "00000001", "00000111"),
+std::make_tuple("00000110", "00000001", "00000111"),
+std::make_tuple("00000010", "00000001", "00000111"),
+
+std::make_tuple("00000000", "00000010", "00000111"),
+std::make_tuple("00000000", "00000010", "00000111"),
+std::make_tuple("00000000", "00000010", "00000000"), //FIO
+std::make_tuple("00000000", "00000010", "00000000") //FIO
             });
 }
 
@@ -221,9 +290,13 @@ std::vector<uint32_t> serialize(GeneticParams params, Chromosome chrom) {
 }
 
 //TODO: Mudar os parametros de toda makeCell pelo codigo
-Cell makeCell(std::array<bool,16> func) {
+Cell makeCell(std::array<bool,16> func, std::array<bool, MUX_BITS_SEL> sel0, std::array<bool, MUX_BITS_SEL> sel1, std::array<bool, MUX_BITS_SEL> sel2, std::array<bool, MUX_BITS_SEL> sel3) {
 	Cell res;
 	res.function = func;
+	res.sel0 = sel0;
+	res.sel1 = sel1;
+	res.sel2 = sel2;
+	res.sel3 = sel3;
 	return res;
 }
 
@@ -421,6 +494,13 @@ void sendVectorToFPGA(std::vector<uint32_t> vec, void* fpgaMemory) {
 		CHROM_SEG_30_BASE
 	};
 
+	// Testando novo Design
+	//vec = {1,1,1,1,0,1,1,0,1,1,1,0,1,1,0,0,1,0,0,1,1,0,1,0,0,0,0,1,0,0,0,1,0,0,1,0,1,1,1,1,1,0,1,0,0,0,0,0,0};
+
+    /*for(int i=0; i < vec.size(); i++){
+        std::cout << vec.at(i) << ", ";
+    }*/
+
 	// Sending serialized chromosome to FPGA.
 	for (unsigned int i = 0; i < vec.size(); i++) {
 		void* segmentAddr = (uint8_t*) fpgaMemory + segmentAddrs[i];
@@ -429,8 +509,13 @@ void sendVectorToFPGA(std::vector<uint32_t> vec, void* fpgaMemory) {
 }
 
 void sendChromosomeToFPGA(Chromosome chromosome, GeneticParams params, void* fpgaMemory) {
+	
+
 	sendVectorToFPGA(serialize(params, chromosome), fpgaMemory);
+
+
 }
+
 
 uint32_t sendVectorAndGetErrorSum
     ( std::vector<uint32_t> vec
@@ -493,6 +578,38 @@ uint32_t sendChromosomeAndGetErrorSum
     , GeneticParams params
     , void* fpgaMemory
     ) {
+		//ZERANDO MULTIPLEXADORES
+	/*for (unsigned int i = 0; i < params.r; i++) {
+		for (unsigned int j = 0; j < params.c; j++) {
+			
+			for(unsigned int k = 0; k < MUX_BITS_SEL; k++)
+			{
+				chrom.cells[i][j].sel0[k] = false;
+			}
+				for(unsigned int k = 0; k < MUX_BITS_SEL; k++)
+			{
+				chrom.cells[i][j].sel1[k] = false;
+			}
+				for(unsigned int k = 0; k < MUX_BITS_SEL; k++)
+			{
+				chrom.cells[i][j].sel2[k] = false;
+			}
+				for(unsigned int k = 0; k < MUX_BITS_SEL; k++)
+			{
+				chrom.cells[i][j].sel3[k] = false;
+			}
+		}
+	}
+
+	auto b2c = [](bool b) {
+				return b ? '1' : '0';
+			};
+
+	auto s = map(b2c, rawSerialize(params, chrom));
+	std::reverse(s.begin(), s.end());
+	std::cout << "Serialize Chromossome mux0:" << std::endl;
+	std::cout << std::string(s.begin(), s.end()) << std::endl << std::endl;*/
+
     auto serial = serialize(params, chrom);
     return sendVectorAndGetErrorSum(serial, fpgaMemory);
 }
@@ -564,6 +681,18 @@ RNGFUNC(Func) randomFunc() {
 	}, getRandom());
 }
 
+RNGFUNC(Sel) randomSel() {
+	return rmap<random_type, Sel>([](random_type r) {
+		auto temp = arrayFromInt(r);
+		std::array<bool, MUX_BITS_SEL> result;
+		for(int i = 0; i < MUX_BITS_SEL; i++)
+		{
+			result[i] = temp[i]; 
+		}
+		return result;
+	}, getRandom());
+}
+
 RNGFUNC(unsigned int)  randomOutput(GeneticParams params, unsigned int c) {
 	return bind
 			( getRandom()
@@ -588,7 +717,15 @@ RNGFUNC(std::vector<unsigned int>)  mutateOutput
 RNGFUNC(Cell)  randomCell()
 {
 	return bind(randomFunc(), [=](Func randFunc) {
-		return pure(makeCell(randFunc));
+		return bind(randomSel(), [=](std::array<bool, MUX_BITS_SEL> randSel0){
+			return bind(randomSel(), [=](std::array<bool, MUX_BITS_SEL> randSel1){
+				return bind(randomSel(), [=](std::array<bool, MUX_BITS_SEL> randSel2){
+					return bind(randomSel(), [=](std::array<bool, MUX_BITS_SEL> randSel3){
+						return pure(makeCell(randFunc, randSel0, randSel1, randSel2, randSel3));
+					});
+				});
+			});
+		});
 	});
 }
 
@@ -597,7 +734,7 @@ RNGFUNC(Cell) mutateCell(Cell cell){
 		int cell_elements = 16 + 4 * MUX_BITS_SEL;
 		Cell cellMut = cell;
 		if (rand % cell_elements < 16){
-			cellMut.function[rand % 15] = !cellMut.function[rand % 15];
+			cellMut.function[rand % 16] = !cellMut.function[rand % 16];
 		}else{
 			switch(rand % 4){
 				case 0:
@@ -617,6 +754,7 @@ RNGFUNC(Cell) mutateCell(Cell cell){
 			}
 		}
 		return pure(cellMut);
+
 	});
 }
 
@@ -747,7 +885,7 @@ std::function<bool(GAState<Evaluated<Chromosome>>)>
 			};
 			auto s = map(b2c, rawSerialize(currentParams, state.population[0].value));
 			std::reverse(s.begin(), s.end());
-			std::cout << std::string(s.begin(), s.end()) << std::endl << std::endl;
+			//std::cout << std::string(s.begin(), s.end()) << std::endl << std::endl;
             printf("%d %g\n", state.generation, state.population[0].score);
         }
         return state.generation < MAX_GENERATIONS;
@@ -973,10 +1111,12 @@ int main() {
 			std::cout << "Lamda: "<< lambda << std::endl;
 			std::cout << "Linhas x Colunas: "<< CIRCUIT_ROW_COUNT << " x " << CIRCUIT_COLUMN_COUNT << std::endl;
 			std::cout << "Saidas: "<< NUM_OUT << std::endl;
+			std::cout << "MUX_BITS_SEL: "<< MUX_BITS_SEL << std::endl;
 
-		/* Send a raw chromosome and evaluate once
+		 //Send a raw chromosome and evaluate once
 
-		std::string bitstring = "000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000101001000000000001001001001001";
+		/*
+		std::string bitstring = "0000000000000000000101000011111100011011111110101";
 		std::reverse(bitstring.begin(), bitstring.end());
 		auto data = std::vector<char>(bitstring.begin(), bitstring.end());
 		auto fun = [](char c) {

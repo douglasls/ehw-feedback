@@ -12,8 +12,8 @@
 #include <fstream>
 #include <functional>
 #include <vector>
-#include <bitset>
 #include <stdio.h>
+#include <bitset>
 #include <stdlib.h>
 #include <string>
 #include <sstream>

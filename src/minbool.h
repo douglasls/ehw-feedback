@@ -407,7 +407,7 @@ std::string Value2Var(int i, int term, std::string var[4]){
     if(term == 2){
         ret = "";
     }
-    if(i>3 && term != 2){
+    if(i<3 && term != 2){
         ret+= "*";
     }
     std::cout << "ret = " << ret << std::endl;

@@ -401,10 +401,10 @@ std::string Value2Var(int i, int term, std::string var[4]){
     // }
     ret = var[i];
     if(term == 0){
-        ret += "'";
+        ret += "' ";
     }
     if(term == 2){
-        ret = "";
+        ret = " ";
     }
     return ret;
 }

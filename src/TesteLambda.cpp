@@ -412,6 +412,8 @@ std::string minibool(Cell cell){
 			for(int j = i; j<3; j++){
 				if(term[j+1] == 2){
 					asterisco = 0;
+				}else{
+					break;
 				}
 			}
 			

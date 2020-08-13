@@ -379,9 +379,9 @@ std::vector<MinTerm<Nbits>> minimize_boolean(
 
 } // namespace minbool
 
-std::string Value2Var(int i, int term, std::string var[4]){
+std::string Value2Var(int i, int term, std::string var[4], int proxTerm){
     std::string ret = "";
-    std::cout << "Value2Var(" << i << ", " << term << ", [" << var[0] << ", " << var[1] << ", " << var[2] << ", " << var[3] << "];" << std::endl;
+    // std::cout << "Value2Var(" << i << ", " << term << ", [" << var[0] << ", " << var[1] << ", " << var[2] << ", " << var[3] << "];" << std::endl;
     // switch (i)
     // {
     // case 0:
@@ -407,10 +407,10 @@ std::string Value2Var(int i, int term, std::string var[4]){
     if(term == 2){
         ret = "";
     }
-    if(i<3 && term != 2){
+    if(i<3 && term != 2 && proxTerm != 2){
         ret+= "*";
     }
-    std::cout << "ret = " << ret << std::endl;
+    // std::cout << "ret = " << ret << std::endl;
     return ret;
 }
 

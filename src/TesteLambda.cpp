@@ -408,7 +408,12 @@ std::string minibool(Cell cell){
 			// }else{
 			// 	newTerm.insert(0, Value2Var(3-i, term[i], entradas));
 			// }
-			newTerm.insert(0, Value2Var(3-i, term[i], entradas));
+			if(i+1 < 4){
+				newTerm.insert(0, Value2Var(3-i, term[i], entradas, term[i+1]));
+			}else{
+				newTerm.insert(0, Value2Var(3-i, term[i], entradas, 2));
+			}
+			
         }
         newTerm += "+";
         finalSolution += newTerm;

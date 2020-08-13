@@ -379,26 +379,27 @@ std::vector<MinTerm<Nbits>> minimize_boolean(
 
 } // namespace minbool
 
-std::string Value2Var(int i, int term){
+std::string Value2Var(int i, int term, std::string var[4]){
     std::string ret = "";
-    switch (i)
-    {
-    case 0:
-        ret = "A";
-        break;
-    case 1:
-        ret = "B";
-        break;
-    case 2:
-        ret = "C";
-        break;
-    case 3:
-        ret = "D";
-        break;            
-    default:
-        return "E";
-        break;
-    }
+    // switch (i)
+    // {
+    // case 0:
+    //     ret = "A";
+    //     break;
+    // case 1:
+    //     ret = "B";
+    //     break;
+    // case 2:
+    //     ret = "C";
+    //     break;
+    // case 3:
+    //     ret = "D";
+    //     break;            
+    // default:
+    //     return "E";
+    //     break;
+    // }
+    ret = var[i];
     if(term == 0){
         ret += "'";
     }

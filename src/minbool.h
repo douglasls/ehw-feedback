@@ -381,6 +381,7 @@ std::vector<MinTerm<Nbits>> minimize_boolean(
 
 std::string Value2Var(int i, int term, std::string var[4]){
     std::string ret = "";
+    std::cout << "Value2Var(" << i << ", " << term << ", [" << var[0] << ", " << var[1] << ", " << var[2] << ", " << var[3] << "];" << std::endl;
     // switch (i)
     // {
     // case 0:

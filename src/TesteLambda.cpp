@@ -403,7 +403,12 @@ std::string minibool(Cell cell){
     for (auto& term : solution){
         // std::cout << term << std::endl;
         for(int i = 0; i<4; i++){
-            newTerm.insert(0, Value2Var(3-i, term[i], entradas));
+			// if(entradas[3-i] == "0" && term[i] == 2){
+			// 	newTerm.insert(0, "Removido!" + Value2Var(3-i, term[i], entradas));
+			// }else{
+			// 	newTerm.insert(0, Value2Var(3-i, term[i], entradas));
+			// }
+			newTerm.insert(0, Value2Var(3-i, term[i], entradas));
         }
         newTerm += "+";
         finalSolution += newTerm;

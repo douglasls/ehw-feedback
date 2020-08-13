@@ -408,12 +408,10 @@ std::string minibool(Cell cell){
 			// }else{
 			// 	newTerm.insert(0, Value2Var(3-i, term[i], entradas));
 			// }
-			int asterisco = 1;
+			int asterisco = 0;
 			for(int j = i; j<3; j++){
-				if(term[j+1] == 2){
-					asterisco = 0;
-				}else{
-					break;
+				if(term[j+1] != 2){
+					asterisco = 1;
 				}
 			}
 			

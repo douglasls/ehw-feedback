@@ -400,6 +400,9 @@ std::string Value2Var(int i, int term, std::string var[4]){
     //     break;
     // }
     ret = var[i];
+    if(i<3){
+        ret+= "*"
+    }
     if(term == 0){
         ret += "'";
     }

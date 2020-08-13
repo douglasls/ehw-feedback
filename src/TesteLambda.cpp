@@ -404,9 +404,6 @@ std::string minibool(Cell cell){
         // std::cout << term << std::endl;
         for(int i = 0; i<4; i++){
             newTerm.insert(0, Value2Var(3-i, term[i], entradas));
-			if(i<3){
-				newTerm += "*";
-			}
         }
         newTerm += "+";
         finalSolution += newTerm;

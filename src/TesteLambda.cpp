@@ -344,9 +344,16 @@ unsigned int fitInLargerIndex
 int bool2int (std::array<bool, MUX_BITS_SEL> array){
 	int valor = 0;
 
+    std::cout << "array: ";
+    for(int j=0; j<MUX_BITS_SEL; j++){
+        std::cout << array[j];
+    }
+    std::cout << std::endl;
+
     for(int i=MUX_BITS_SEL-1; i>=0; --i){
         valor += pow(2, MUX_BITS_SEL-1-i) * array[i];
     }
+    std::cout << "valor: " << valor << std::endl;
 	return valor;
 }
 
@@ -380,6 +387,7 @@ std::string identifyInput(int inp, int sel){
     }
     return input;
 }
+}
 
 std::string minibool(Cell cell){
     using namespace minbool;
@@ -388,9 +396,16 @@ std::string minibool(Cell cell){
 	
 	// Vetor de string com as entradas da cell 
 	std::string entradas [4] = {identifyInput(bool2int(cell.sel0), 0),
-							  identifyInput(bool2int(cell.sel1), 1),
-							  identifyInput(bool2int(cell.sel2), 2),
-							  identifyInput(bool2int(cell.sel3), 3)};	
+							  	identifyInput(bool2int(cell.sel1), 1),
+							  	identifyInput(bool2int(cell.sel2), 2),
+							  	identifyInput(bool2int(cell.sel3), 3)};
+
+	std::cout << "[ ";
+    for(int i=0; i<4; i++){
+        std::cout << entradas[i] << " ";
+    }
+    std::cout << "]" << std::endl;
+
 
     std::vector<uint8_t> on = convertCell2Tab(function);
 
@@ -419,6 +434,7 @@ std::string minibool(Cell cell){
 		// }
 		// std::cout << "exprSemZero = " << exprSemZero << std::endl;
         for(int i = 0; i<4; i++){
+
 			int asterisco = 0;
 			for(int j = i; j<3; j++){
 				if(term[j+1] != 2){

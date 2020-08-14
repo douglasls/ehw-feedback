@@ -350,8 +350,8 @@ int bool2int (std::array<bool, MUX_BITS_SEL> array){
     }
     std::cout << std::endl;
 
-    for(int i=MUX_BITS_SEL-1; i>=0; --i){
-        valor += pow(2, MUX_BITS_SEL-1-i) * array[i];
+    for(int i=0; i<MUX_BITS_SEL; ++i){
+        valor += pow(2,i) * array[i];
     }
     std::cout << "valor: " << valor << std::endl;
 	return valor;

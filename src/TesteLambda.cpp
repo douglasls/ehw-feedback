@@ -405,32 +405,30 @@ std::string minibool(Cell cell){
 
     for (auto& term : solution){
         // std::cout << term << std::endl;
-		bool exprSemZero = true;
-		for(int i = 0; i<4; i++){
-			tipoTermo = term[i];
-			termo = entradas[3-i];
-			if(termo == "0" && tipoTermo == 1){
-				exprSemZero = false;
-			}
-			else if(termo == "0" && tipoTermo == 0){
-				std::cout << "trocar 0' por 1 (trocar tipoTermo por 2)";
-				term[i] = 2;
-			}
-		}
-		std::cout << "exprSemZero = " << exprSemZero << std::endl;
-		if(exprSemZero){
-			for(int i = 0; i<4; i++){
-				int asterisco = 0;
-				for(int j = i; j<3; j++){
-					if(term[j+1] != 2){
-						asterisco = 1;
-					}
-				}
-				
-				newTerm.insert(0, Value2Var(3-i, term[i], entradas, asterisco));
+		// bool exprSemZero = true;
+		// for(int i = 0; i<4; i++){
+		// 	tipoTermo = term[i];
+		// 	termo = entradas[3-i];
+		// 	if(termo == "0" && tipoTermo == 1){
+		// 		exprSemZero = false;
+			// }
+			// else if(termo == "0" && tipoTermo == 0){
+			// 	std::cout << "trocar 0' por 1 (trocar tipoTermo por 2)";
+			// }
 
+		// }
+		// std::cout << "exprSemZero = " << exprSemZero << std::endl;
+        for(int i = 0; i<4; i++){
+			int asterisco = 0;
+			for(int j = i; j<3; j++){
+				if(term[j+1] != 2){
+					asterisco = 1;
+				}
 			}
-		}
+			
+			newTerm.insert(0, Value2Var(3-i, term[i], entradas, asterisco));
+
+        }
         newTerm += "+";
         finalSolution += newTerm;
         newTerm = "";

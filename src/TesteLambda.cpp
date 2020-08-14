@@ -344,16 +344,10 @@ unsigned int fitInLargerIndex
 int bool2int (std::array<bool, MUX_BITS_SEL> array){
 	int valor = 0;
 
-    std::cout << "array: ";
-    for(int j=0; j<MUX_BITS_SEL; j++){
-        std::cout << array[j];
-    }
-    std::cout << std::endl;
-
     for(int i=0; i<MUX_BITS_SEL; ++i){
         valor += pow(2,i) * array[i];
     }
-    std::cout << "valor: " << valor << std::endl;
+
 	return valor;
 }
 
@@ -399,12 +393,6 @@ std::string minibool(Cell cell){
 							  	identifyInput(bool2int(cell.sel2), 2),
 							  	identifyInput(bool2int(cell.sel3), 3)};
 
-	std::cout << "[ ";
-    for(int i=0; i<4; i++){
-        std::cout << entradas[i] << " ";
-    }
-    std::cout << "]" << std::endl;
-
 
     std::vector<uint8_t> on = convertCell2Tab(function);
 
@@ -444,7 +432,7 @@ std::string minibool(Cell cell){
 			newTerm.insert(0, Value2Var(3-i, term[i], entradas, asterisco));
 
         }
-        newTerm += "+";
+        newTerm += " + ";
         finalSolution += newTerm;
         newTerm = "";
     }

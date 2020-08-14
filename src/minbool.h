@@ -382,8 +382,8 @@ std::vector<MinTerm<Nbits>> minimize_boolean(
 std::string Value2Var(int i, int term, std::string var[4], int asterisco){
     std::string ret = "";
     std::cout << "Value2Var(" << i << ", " << term << ", [" << var[0] << ", " << var[1] << ", " << var[2] << ", " << var[3] << "], " << asterisco << ");" << std::endl;
-    if(i>0 && term != 2 && asterisco == 1){
-        ret+= "*";
+    if(i>0 && asterisco == 1){
+        ret += "*";
     }
     // switch (i)
     // {
@@ -403,7 +403,7 @@ std::string Value2Var(int i, int term, std::string var[4], int asterisco){
     //     return "E";
     //     break;
     // }
-    ret = var[i];
+    ret += var[i];
     if(term == 0){
         ret += "'";
     }

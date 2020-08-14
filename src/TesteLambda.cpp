@@ -402,14 +402,14 @@ std::string minibool(Cell cell){
 
     for (auto& term : solution){
         // std::cout << term << std::endl;
+		bool exprSemZero = true;
+		for(int i = 0; i<4; i++){
+			if(entradas[3-i] == "0" && term[i] != 2){
+				exprSemZero = false;
+			}
+		}
+		std::cout << "exprSemZero = " << exprSemZero << std::endl;
         for(int i = 0; i<4; i++){
-			// if(entradas[3-i] == "0" && term[i] == 2){
-			// 	newTerm.insert(0, "Removido!" + Value2Var(3-i, term[i], entradas));
-			// }else{
-			// 	newTerm.insert(0, Value2Var(3-i, term[i], entradas));
-			// }
-
-			// Verifica se algum dos termos adiante sera colocado (term[j+1] != 2) e passa o parametro para adicionar um asterisco apos o termo
 			int asterisco = 0;
 			for(int j = i; j<3; j++){
 				if(term[j+1] != 2){

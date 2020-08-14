@@ -400,13 +400,22 @@ std::string minibool(Cell cell){
     std::string newTerm = "";
     std::string finalSolution = "";
 
+	int tipoTermo;
+	std::string termo;
+
     for (auto& term : solution){
         // std::cout << term << std::endl;
 		bool exprSemZero = true;
 		for(int i = 0; i<4; i++){
-			if(entradas[3-i] == "0" && term[i] != 2){
+			tipoTermo = term[i];
+			termo = entradas[3-i];
+			if(termo == "0" && tipoTermo == 1){
 				exprSemZero = false;
 			}
+			else if(termo == "0" && tipoTermo == 0){
+				std::cout << "trocar 0' por 1 (trocar tipoTermo por 2)";
+			}
+
 		}
 		std::cout << "exprSemZero = " << exprSemZero << std::endl;
         for(int i = 0; i<4; i++){

@@ -12,8 +12,8 @@
 #include <fstream>
 #include <functional>
 #include <vector>
-#include <bitset>
 #include <stdio.h>
+#include <bitset>
 #include <stdlib.h>
 #include <string>
 #include <sstream>
@@ -341,14 +341,58 @@ unsigned int fitInLargerIndex
 	return index;
 }
 
+int bool2int (std::array<bool, MUX_BITS_SEL> array){
+	int valor = 0;
 
-//=====================================================================
-//TODO: modificar as funcoes que mostram o cromossomo, abaixo
+    for(int i=0; i<MUX_BITS_SEL; ++i){
+        valor += pow(2,i) * array[i];
+    }
+
+	return valor;
+}
+
+std::string identifyInput(int inp, int sel){
+    std::string input;
+
+    if(inp < NUM_IN)
+    {
+        input = "IN[" + std::to_string(inp) + "]";    
+    }
+    else if(inp == NUM_IN){
+        input = "VIZ_";
+        switch(sel){
+            case 0:
+                input += "C";
+            break;
+            case 1:
+                input += "D";
+            break;
+            case 2:
+                input += "B";
+            break;
+            case 3:
+                input += "E";
+            break;
+            default:
+            break;
+        }
+    }else{
+        input = "0";
+    }
+    return input;
+}
 
 std::string minibool(Cell cell){
     using namespace minbool;
 
 	std::array<bool,16> function = cell.function;
+	
+	// Vetor de string com as entradas da cell 
+	std::string entradas [4] = {identifyInput(bool2int(cell.sel0), 0),
+							  	identifyInput(bool2int(cell.sel1), 1),
+							  	identifyInput(bool2int(cell.sel2), 2),
+							  	identifyInput(bool2int(cell.sel3), 3)};
+
 
     std::vector<uint8_t> on = convertCell2Tab(function);
 
@@ -358,12 +402,37 @@ std::string minibool(Cell cell){
     std::string newTerm = "";
     std::string finalSolution = "";
 
+	int tipoTermo;
+	std::string termo;
+
     for (auto& term : solution){
         // std::cout << term << std::endl;
+		// bool exprSemZero = true;
+		// for(int i = 0; i<4; i++){
+		// 	tipoTermo = term[i];
+		// 	termo = entradas[3-i];
+		// 	if(termo == "0" && tipoTermo == 1){
+		// 		exprSemZero = false;
+			// }
+			// else if(termo == "0" && tipoTermo == 0){
+			// 	std::cout << "trocar 0' por 1 (trocar tipoTermo por 2)";
+			// }
+
+		// }
+		// std::cout << "exprSemZero = " << exprSemZero << std::endl;
         for(int i = 0; i<4; i++){
-            newTerm.insert(0, Value2Var(3-i, term[i]));
+
+			int asterisco = 0;
+			for(int j = i; j<3; j++){
+				if(term[j+1] != 2){
+					asterisco = 1;
+				}
+			}
+			
+			newTerm.insert(0, Value2Var(3-i, term[i], entradas, asterisco));
+
         }
-        newTerm += "+";
+        newTerm += " + ";
         finalSolution += newTerm;
         newTerm = "";
     }
@@ -493,13 +562,6 @@ void sendVectorToFPGA(std::vector<uint32_t> vec, void* fpgaMemory) {
 		CHROM_SEG_25_BASE, CHROM_SEG_26_BASE, CHROM_SEG_27_BASE, CHROM_SEG_28_BASE, CHROM_SEG_29_BASE,
 		CHROM_SEG_30_BASE
 	};
-
-	// Testando novo Design
-	//vec = {1,1,1,1,0,1,1,0,1,1,1,0,1,1,0,0,1,0,0,1,1,0,1,0,0,0,0,1,0,0,0,1,0,0,1,0,1,1,1,1,1,0,1,0,0,0,0,0,0};
-
-    /*for(int i=0; i < vec.size(); i++){
-        std::cout << vec.at(i) << ", ";
-    }*/
 
 	// Sending serialized chromosome to FPGA.
 	for (unsigned int i = 0; i < vec.size(); i++) {

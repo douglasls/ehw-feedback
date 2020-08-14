@@ -387,7 +387,6 @@ std::string identifyInput(int inp, int sel){
     }
     return input;
 }
-}
 
 std::string minibool(Cell cell){
     using namespace minbool;
